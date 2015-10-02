@@ -6,6 +6,9 @@ import cvxpy as cvx
 import numpy as np
 from numpy import linalg as LA
 from scipy.stats import multivariate_normal
+from sklearn.covariance import GraphLassoCV#
+
+
 class lassoEM(BaseEstimator):
     """
 
@@ -57,14 +60,20 @@ class lassoEM(BaseEstimator):
 
             self.centers_ = [[sum([rho[i][k]*X[i][j] for i in range(N)])
                               for j in range(len(X[0]))] for k in Klist]
-            self.pi_ = [sum( [taui[k] for taui in tau ])/len(X) for k in Klist]
+
+            self.pi_ = [sum( [taui[k] for taui in tau ])/N for k in Klist]
 
             sn = [[[sum([(X[i][j] - self.centers_[k][j]) * (X[i][l] - self.centers_[k][l]) * rho[i][k] for i in range(N)])
                   for l in range(p)]
                  for j in range(p)]
                 for k in Klist]
 
+            X2 = [self.Xtranform(X, np.sqrt(np.reshape(np.array(rho)[:,k],[N,1])), self.centers_[k], k) for k in Klist]
+            print sn[0]
+            print np.dot(X2[0].T,X2[0])
             self.omega_ = [self.omega_solve(sn[k], self.alpha) for k in Klist]
+            #self.omega_ = [graphlassosk(X2[k]).tolist() for k in Klist]
+            print self.omega_
 
 
     def tauik(self, x, k):
@@ -73,6 +82,11 @@ class lassoEM(BaseEstimator):
 
     def rhoik(self, tau, i, k):
         return tau[i][k]/(sum([tauj[k] for tauj in tau]))
+
+    def Xtranform(self, X, rho, center, k):
+        return rho*(X-center)
+
+
 
     def omega_solve(self, snk, alpha):
 
@@ -126,6 +140,12 @@ def gaussM_1d(x, pi, mus, sigmas):
 def gaussM_Md(X, pi, mus, sigmas):
     return [gaussM_1d(x, pi, mus, sigmas) for x in X]
 
+def graphlassosk(X):
+    model = GraphLassoCV()
+    model.fit(X)
+    return model.precision_
+
+
 
 if __name__ == '__main__':
 
@@ -135,7 +155,7 @@ if __name__ == '__main__':
 
 
     X = gaussM(weigths,centers,vars, 1000)
-    lasso = lassoEM(n_components=2, n_iter=10, lambd=20)
+    lasso = lassoEM(n_components=2, n_iter=2, lambd=20)
     lasso.fit(X)
 
     print "Lasso ==============="
