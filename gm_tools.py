@@ -21,3 +21,18 @@ def gm_params_generator(d,k):
     p = np.random.randint(1000, size=(1, k))[0]
     weights = 1.0*p/p.sum()
     return weights, centers, cov
+
+
+def get_centers_order(real_centers, estim_centers):
+    """
+    :param real_centers:
+    :param estim_centers:
+    :return: list ok k clusters matched (REAL_centers, ESTIM_centers)
+    """
+    d = {}
+    k = len(real_centers)
+    for u in range(k):
+        for v in range(k):
+            d[(u,v)] = np.linalg.norm(real_centers[u]-estim_centers[v])
+    mins = sorted(d, key=d.get)[:k] #Nice trick
+    return mins

@@ -52,8 +52,8 @@ class GraphLassoMix(BaseEstimator):
             self.pi = t.sum(axis=0)*1/self.N
             self.centers = np.array([(t[:,k]*X.T).sum(axis=1)*1/(self.N*self.pi[k]) for k in range(self.n_components)])
             #We normalize X with tau for sklearn graphlasso estimator
-            Z = [((X-self.centers[k]).T*np.sqrt(t[:,k]/t[:,k].sum())).T for k in range(self.n_components)]
-            self.omegas = np.array([1.0/self.N*self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
+            Z = [((X-self.centers[k]).T*np.sqrt(self.N*t[:,k]/t[:,k].sum())).T for k in range(self.n_components)]
+            self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
 
     def gauss_dens_inv_all(self, X, center, omega):
         pi = np.pi
