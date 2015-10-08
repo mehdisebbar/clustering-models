@@ -55,6 +55,8 @@ class GraphLassoMix(BaseEstimator):
             Z = [((X-self.centers[k]).T*np.sqrt(self.N*t[:,k]/t[:,k].sum())).T for k in range(self.n_components)]
             self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
 
+        self.clusters_assigned = t.argmax(axis = 1)
+
     def gauss_dens_inv_all(self, X, center, omega):
         pi = np.pi
         return np.sqrt(np.linalg.det(omega) / ((2 * pi) ** self.p)) * \
