@@ -3,7 +3,7 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import check_array
 import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.covariance import GraphLassoCV
+from sklearn.covariance import GraphLasso
 
 
 class GraphLassoMix(BaseEstimator):
@@ -18,7 +18,7 @@ class GraphLassoMix(BaseEstimator):
             self.alpha = [10 for _ in range(self.n_components)]
         else:
             self.alpha = alpha
-        self.model = [GraphLassoCV() for k in range(self.n_components)]
+        self.model = [GraphLasso(alpha=self.alpha[k], assume_centered=True, tol=1e-4, verbose=True) for k in range(self.n_components)]
 
     def fit(self, X, y=None):
         """
@@ -56,6 +56,13 @@ class GraphLassoMix(BaseEstimator):
             self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
 
         self.clusters_assigned = t.argmax(axis = 1)
+
+
+    def cluster_assigned(self, X):
+        d = np.array([self.gauss_dens_inv_all(X, self.centers[k], self.omegas[k]) for k in range(len(self.pi))]).T
+        return d.argmax(axis = 1)
+
+
 
     def gauss_dens_inv_all(self, X, center, omega):
         pi = np.pi
