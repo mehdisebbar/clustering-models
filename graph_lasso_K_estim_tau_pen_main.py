@@ -1,9 +1,10 @@
-from gm_tools import gaussian_mixture_sample, gm_params_generator, best_cont_matrix
-from graph_lasso_K_estim import GraphLassoMix
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.mixture import GMM
 from time import time
+
+from sklearn.mixture import GMM
+
+from gm_tools import gaussian_mixture_sample, gm_params_generator, best_cont_matrix
+from graph_lasso_K_estim_tau_pen import GraphLassoMix
+
 
 def main(d,k,N):
 

@@ -1,10 +1,10 @@
-
-from sklearn.base import BaseEstimator
-from sklearn.utils import check_array
-from sklearn.mixture import GMM
 import numpy as np
 from cvxpy import *
 from scipy.stats import multivariate_normal
+from sklearn.base import BaseEstimator
+from sklearn.mixture import GMM
+from sklearn.utils import check_array
+
 
 class GraphLassoMix(BaseEstimator):
     """

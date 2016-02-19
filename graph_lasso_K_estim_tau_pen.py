@@ -1,11 +1,11 @@
-
-from sklearn.base import BaseEstimator
-from sklearn.utils import check_array
 import numpy as np
-from sklearn.cluster import KMeans
-from sklearn.covariance import GraphLasso
 import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
+from sklearn.base import BaseEstimator
+from sklearn.cluster import KMeans
+from sklearn.covariance import GraphLasso
+from sklearn.utils import check_array
+
 rglasso = importr('glasso')
 rpy2.robjects.numpy2ri.activate()
 from cvxpy import *
