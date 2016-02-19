@@ -1,5 +1,5 @@
 from gm_tools import gaussian_mixture_sample, gm_params_generator, best_cont_matrix
-from graph_lassov5 import GraphLassoMix
+from graph_lasso_K_estim import GraphLassoMix
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.mixture import GMM
@@ -42,9 +42,9 @@ def algo_score(Y, y_estim, t):
     print t, 's'
 
 if __name__ == '__main__':
-    dim_range = [4]
-    N_range = [100]
-    k_range = [4]
+    dim_range = [2]
+    N_range = [200]
+    k_range = [2]
     for n in N_range:
         for k in k_range:
             for d in dim_range:

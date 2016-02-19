@@ -4,6 +4,10 @@ from sklearn.utils import check_array
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.covariance import GraphLasso
+import rpy2.robjects.numpy2ri
+from rpy2.robjects.packages import importr
+rglasso = importr('glasso')
+rpy2.robjects.numpy2ri.activate()
 
 
 class GraphLassoMix(BaseEstimator):
@@ -53,10 +57,9 @@ class GraphLassoMix(BaseEstimator):
             self.centers = np.array([(t[:,k]*X.T).sum(axis=1)*1/(self.N*self.pi[k]) for k in range(self.n_components)])
             #We normalize X with tau for sklearn graphlasso estimator
             Z = [((X-self.centers[k]).T*np.sqrt(self.N*t[:,k]/t[:,k].sum())).T for k in range(self.n_components)]
-            self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
-
+            #self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
+            self.omegas = np.array([ self.r_lasso_wrapper(Z[k]) for k in range(self.n_components)])
         self.clusters_assigned = t.argmax(axis = 1)
-
 
     def cluster_assigned(self, X):
         d = np.array([self.gauss_dens_inv_all(X, self.centers[k], self.omegas[k]) for k in range(len(self.pi))]).T
@@ -73,3 +76,6 @@ class GraphLassoMix(BaseEstimator):
         densities = np.array([self.gauss_dens_inv_all(X, centers[k], omegas[k]) for k in range(len(pi))]).T*pi
         s = densities.sum(axis=1)
         return (densities.T/(densities.sum(axis=1))).T
+
+    def r_lasso_wrapper(self, Z_k):
+        return np.array(rglasso.glasso(np.cov(Z_k.T),0.1)[1])
