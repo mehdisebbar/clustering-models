@@ -2,6 +2,7 @@ import numpy as np
 from numpy.random import multivariate_normal, multinomial
 from sklearn.datasets import make_sparse_spd_matrix
 from itertools import permutations
+import scipy.stats
 
 def gaussian_mixture_sample(pi, centers, sigmas, N):
     """
@@ -35,7 +36,7 @@ def gm_params_generator(d,k):
         distances = np.linalg.norm(np.array(centers)-np.array(center), axis=1)
         while len(distances[distances<0.0]) > 0:
             center = 20*np.random.rand(1, d)[0]-10
-            distances = np.linalg.norm(np.array(cnters)-np.array(center), axis=1)
+            distances = np.linalg.norm(np.array(centers)-np.array(center), axis=1)
         centers.append(center)
 
     cov = np.array([50*np.linalg.inv(make_sparse_spd_matrix(d, alpha=0.8)) for _ in range(k)])
@@ -115,3 +116,6 @@ def cluster_match(y_real, y_estim):
     y_real_segments = sorted([(len(y_real[y_real==k]),k) for k in set(y_real)], key=lambda x: x[0])
     y_estim_segments = sorted([(len(y_estim[y_estim==k]),k) for k in set(y_estim)], key=lambda x: x[0])
     return y_real_segments, y_estim_segments
+
+def gauss_mix_density(x, pi, means, covars):
+    return np.array([pi[j] * scipy.stats.multivariate_normal.pdf(x, means[j], covars[j]) for j in range(len(pi))]).sum()
