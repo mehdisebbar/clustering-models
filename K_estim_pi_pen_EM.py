@@ -10,13 +10,18 @@ class GraphLassoMix(BaseEstimator):
     """
     EM algorithm with an estimation of number of clusters
     """
-    def __init__(self, n_iter=10):
-        self.K = 5
+
+    def __init__(self, lambda_param, n_iter=10, max_clusters = 10):
+        self.K = max_clusters
         self.n_iter = n_iter
-        self.fista_iter=10
-        self.lambd_pi_pen = 10
-        self.lambd_fista = 1e-3
-        self.L = 1e3 #Lipschitz constant of grad
+        self.lambd_pi_pen = lambda_param
+        self.L = 1e5  # Lipschitz constant of grad
+        eps = 0.1
+        self.fista_iter = int(np.sqrt(self.K * self.L * eps) // 1)
+        print "-----------------------------------------"
+        print "Param Lambda =", lambda_param
+        print "Max clusters: ", max_clusters
+        print "Nombre d'iterations FISTA: ",self.fista_iter
 
     def fit(self, X, y=None):
         """
@@ -26,7 +31,7 @@ class GraphLassoMix(BaseEstimator):
         """
         X = check_array(X, dtype=np.float64)
 
-        #init with EM algorithm:
+        # init with EM algorithm:
         g = GMM(n_components=self.K)
         g.fit(X)
         means, covars, pi = g.means_, g.covars_, g.weights_
@@ -36,35 +41,45 @@ class GraphLassoMix(BaseEstimator):
         # with the explicit solution from EM
 
         for j in range(self.n_iter):
-            print "Algo Iteration: ",j
+            print "Algo Iteration: ", j
             pi = self.pi_estim(X, means, covars, pi)
-            print pi
+            # we remove clusters such that pi_j = 0
+            non_zero_elements = np.nonzero(pi)[0]
+            self.K = len(non_zero_elements)
+            pi, means, covars = np.array([pi[i] for i in non_zero_elements]), np.array(
+                [means[i] for i in non_zero_elements]), np.array([covars[i] for i in non_zero_elements])
             tau = self.tau(X, means, covars, pi)
-            means = np.array([(tau[:,k]*X.T).sum(axis=1)*1/(self.N*pi[k]) for k in range(self.K)])
-            covars = np.array([self.covar(X, means[k], tau[:, k], pi[k]) for k in range(self.K)])
+            means = np.array([(tau[:, k] * X.T).sum(axis=1)
+                              * 1 / (self.N * pi[k]) for k in range(self.K)])
+            covars = np.array(
+                [self.covar(X, means[k], tau[:, k], pi[k]) for k in range(self.K)])
+        print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
         return pi, tau, means, covars
 
-
-    def gradient(self,X, means, covars, pi_reduced):
+    def gradient(self, X, means, covars, pi_estim):
         """
         calcule le gradient
         peut etre changer les arguments et faire passer lambd_pi
         :param X:
         :param means: vecteur de moyennes (K centres)
-        :param covars: K covars
-        :param pi_reduced: pi de dim K-1
+        :param covars: K covars :param pi_estim: pi de dim K
         :return:
         """
-        k = self.K-1
-        grad =  -np.array(
-            [
-                (multivariate_normal.pdf(X, means[l], covars[l])- multivariate_normal.pdf(X, means[k], covars[k])
-              )/(
-                    multivariate_normal.pdf(X, means[k], covars[k]) + np.array(
-                        [ pi_reduced[j]*(multivariate_normal.pdf(X, means[j], covars[j]) - multivariate_normal.pdf(X, means[k], covars[k])) for j in range(k)]
-                    ).T.sum(axis=1)
-                ) for l in range(k)]).sum(axis=1) + self.lambd_pi_pen
+        grad = -np.array([
+            multivariate_normal.pdf(X, means[l], covars[l]) /
+            (np.array(
+                [pi_estim[
+                    j] * multivariate_normal.pdf(X, means[j], covars[j]) for j in range(self.K)]
+            ).T.sum(axis=1)
+            ) + self.lambd_indi(l) for l in range(self.K)]).sum(axis=1)
         return grad
+
+    def lambd_indi(self, l):
+        # Nous donne lambda pour tout l sauf le dernier = K
+        if l != self.K - 1:
+            return self.lambd_pi_pen
+        else:
+            return 0
 
     def pi_estim(self, X, means, covars, weights):
         """
@@ -78,24 +93,19 @@ class GraphLassoMix(BaseEstimator):
         :return: weights, a K-dim vector of sum = 1
         """
 
-        #Init
-        pi_previous = np.copy(weights[:-1])
-        xi_previous = np.copy(pi_previous)
-        pi = Variable(self.K-1)
-        constraints = [sum_entries(pi) <= 1, pi>= 0]
+        # Init
+        pi_previous = np.copy(weights)
+        xi = np.copy(pi_previous)
 
-        #iterations FISTA
+        # iterations FISTA
         t_previous = 1
         for i in range(self.fista_iter):
-            prob = Problem(Minimize(self.L/2*norm(pi - (xi_previous - 1/self.L * self.gradient(X, means, covars, xi_previous)))**2), constraints)
-            prob.solve(solver=MOSEK)
-            pi_next = np.array([x[0] for x in np.array(pi.value)])
-            t_next = (1. + np.sqrt(1+4*t_previous**2))/2
-            xi_previous = pi_next + (t_previous - 1)/t_next * (pi_next - pi_previous)
-            #TODO checking pi
-            #pi_next = np.array([max(0,pi_j) for pi_j in pi_next])
-        print prob.status
-        return np.array([x for x in pi_next]+[1-pi_next.sum()])
+            pi_next = self.simplex_proj(
+                xi - 1 / self.L * self.gradient(X, means, covars, xi))
+            t_next = (1. + np.sqrt(1 + 4 * t_previous**2)) / 2
+            xi = pi_next + (t_previous - 1) / t_next * (pi_next - pi_previous)
+            pi_previous = np.copy(pi_next)
+        return pi_next
 
     def tau(self, X, centers, covars, pi):
         densities = np.array([multivariate_normal.pdf(X, centers[k], covars[k]) for k in range(len(pi))]).T * pi
@@ -115,3 +125,22 @@ class GraphLassoMix(BaseEstimator):
         N = len(X)
         Z= np.sqrt(tau).reshape(N,1)*(X-mean)
         return 1/(pi*N)*Z.T.dot(Z)
+
+    def simplex_proj(self, y):
+        """
+        Projection sur le probability simplex
+        http://arxiv.org/pdf/1309.1541.pdf
+        :return:
+        """
+        D = len(y)
+        x = np.array(sorted(y, reverse=True))
+        u = [ x[j] + 1./(j+1) * (1-sum([x[i] for i in range(j+1)])) for j in range(D)]
+        l = []
+        for idx, val in enumerate(u):
+            if val > 0 :
+                l.append(idx)
+        if l == []:
+            l.append(0)
+        rho = max(l)
+        lambd = 1./(rho+1)*(1-sum([x[i] for i in range(rho+1)]))
+        return np.array([max(yi + lambd,0) for yi in y])

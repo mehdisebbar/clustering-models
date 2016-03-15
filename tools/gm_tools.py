@@ -1,8 +1,40 @@
 import numpy as np
 from numpy.random import multivariate_normal, multinomial
 from sklearn.datasets import make_sparse_spd_matrix
+from sklearn.cross_validation import train_test_split
 from itertools import permutations
 import scipy.stats
+
+
+class DatasetGenTool(object):
+    """
+    gen tool
+    """
+    def __init__(self, d, k):
+        self.d = d
+        self.k = k
+
+    def generate(self, size, params = None, test_train_ratio = 0.3):
+        """
+        Generate a gaussian mix dataset with train and test sets of a given size
+        params is a dict with the keys pi, centers and covars
+        returns self.X_train, self.X_test, self.Y_train, self.Y_test
+        """
+        if params == None:
+            print("No parameters given, generating dataset with random parameters")
+            self.pi_real, self.centers_real, self.covars_real =\
+            gm_params_generator(self.d, self.k)
+        else:
+            self.pi_real, self.centers_real, self.covars_real =\
+            params["pi"], params["centers"], params["covars"]
+        #We generate the data and split into 2 sets, train and test
+        self.X, self.Y = gaussian_mixture_sample(self.pi_real,
+                                                 self.centers_real,
+                                                 self.covars_real,
+                                                 size)
+        self.X_train, self.X_test, self.Y_train, self.Y_test =\
+        train_test_split(self.X,self.Y, test_size = test_train_ratio)
+        return self.X_train, self.X_test, self.Y_train, self.Y_test
 
 def gaussian_mixture_sample(pi, centers, sigmas, N):
     """
@@ -23,23 +55,39 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     Z[:, space_dimension] = labels
     samples = []
     for cluster_index in range(nb_of_clusters):
-        samples += multivariate_normal(centers[cluster_index], sigmas[cluster_index], sample_repartition_among_clusters[cluster_index]).tolist()
+        samples += multivariate_normal(
+            centers[cluster_index],
+            sigmas[cluster_index],
+            sample_repartition_among_clusters[cluster_index]
+        ).tolist()
     Z[:, range(space_dimension)] = samples
     np.random.shuffle(Z)
     return Z[:, range(space_dimension)], Z[:, space_dimension]
 
-def gm_params_generator(d,k):
-    #We generate centers and verify that they are separated enough
+
+def gm_params_generator(d, k):
+    """
+    We generate centers and verify that they are separated enough
+    :param d: dim
+    :param k: number of clusters
+    :param dist: min distance between clusters
+    """
     centers = [20*np.random.rand(1, d)[0]-10]
     for i in range(k-1):
         center = 20*np.random.rand(1, d)[0]-10
-        distances = np.linalg.norm(np.array(centers)-np.array(center), axis=1)
-        while len(distances[distances<0.0]) > 0:
+        distances = np.linalg.norm(
+            np.array(centers) - np.array(center),
+            axis=1)
+        while len(distances[distances < 0.0]) > 0:
             center = 20*np.random.rand(1, d)[0]-10
-            distances = np.linalg.norm(np.array(centers)-np.array(center), axis=1)
+            distances = np.linalg.norm(
+                np.array(centers) - np.array(center),
+                axis=1)
         centers.append(center)
 
-    cov = np.array([50*np.linalg.inv(make_sparse_spd_matrix(d, alpha=0.8)) for _ in range(k)])
+    cov = np.array([50*np.linalg.inv(
+        make_sparse_spd_matrix(d, alpha=0.8)
+    ) for _ in range(k)])
     p = np.random.randint(1000, size=(1, k))[0]
     weights = 1.0*p/p.sum()
     return weights, centers, cov
@@ -55,29 +103,31 @@ def get_centers_order(real_centers, estim_centers):
     k = len(real_centers)
     for u in range(k):
         for v in range(k):
-            d[(u,v)] = np.linalg.norm(real_centers[u]-estim_centers[v])
-    mins = sorted(d, key=d.get)[:k] #Nice trick
+            d[(u, v)] = np.linalg.norm(real_centers[u]-estim_centers[v])
+    mins = sorted(d, key=d.get)[:k]  # Nice trick
     return mins
 
 
 def cont_val(y, y_estim, i, j):
     y_idx = []
-    for idx,val in enumerate(y):
+    for idx, val in enumerate(y):
         if val == i:
             y_idx.append(idx)
     y_estim_idx = []
-    for idx,val in enumerate(y_estim):
+    for idx, val in enumerate(y_estim):
         if val == j:
             y_estim_idx.append(idx)
-    return len(set(y_idx)&set(y_estim_idx))
+    return len(set(y_idx) & set(y_estim_idx))
+
 
 def cont_matrix(y, y_estim, permut):
     k = len(permut)
-    m = np.zeros((k,k))
+    m = np.zeros((k, k))
     for i in range(k):
         for j in range(k):
-            m[j,i]=cont_val(y, y_estim, i, permut[j])
+            m[j, i] = cont_val(y, y_estim, i, permut[j])
     return m
+
 
 def best_cont_matrix(y, y_estim):
     best_permut = list(set(y))
@@ -90,19 +140,19 @@ def best_cont_matrix(y, y_estim):
     return cont_matrix(y, y_estim, best_permut), best_permut, best_diag_sum
 
 
-
 def match_labels(y_estim2, clusters_match_list):
-    for u,v in clusters_match_list:
-        y_estim2[y_estim2==v] = u
+    for u, v in clusters_match_list:
+        y_estim2[y_estim2 == v] = u
     return y_estim2
 
+
 def clusters_stats(y_real, y_matched):
-    couples = zip(y_real, y_matched)
-    i=0
-    for u,v in zip(y_real, y_matched):
-        if u==v:
-            i+=1
+    i = 0
+    for u, v in zip(y_real, y_matched):
+        if u == v:
+            i += 1
     return 1.0*i/len(y_matched)
+
 
 def cluster_match(y_real, y_estim):
     """
@@ -113,9 +163,13 @@ def cluster_match(y_real, y_estim):
     """
     print "%%%%%%%%%%%%%%%%%%"
     print set(y_estim)
-    y_real_segments = sorted([(len(y_real[y_real==k]),k) for k in set(y_real)], key=lambda x: x[0])
-    y_estim_segments = sorted([(len(y_estim[y_estim==k]),k) for k in set(y_estim)], key=lambda x: x[0])
+    y_real_segments = sorted([(len(y_real[y_real == k]),
+                               k) for k in set(y_real)], key=lambda x: x[0])
+    y_estim_segments = sorted([(len(y_estim[y_estim == k]),
+                                k) for k in set(y_estim)], key=lambda x: x[0])
     return y_real_segments, y_estim_segments
 
+
 def gauss_mix_density(x, pi, means, covars):
-    return np.array([pi[j] * scipy.stats.multivariate_normal.pdf(x, means[j], covars[j]) for j in range(len(pi))]).sum()
+    return np.array([pi[j] * scipy.stats.multivariate_normal.pdf(
+        x, means[j], covars[j]) for j in range(len(pi))]).sum()
