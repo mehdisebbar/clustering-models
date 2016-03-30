@@ -36,6 +36,10 @@ class GraphLassoMix(BaseEstimator):
         g.fit(X)
         means, covars, pi = g.means_, g.covars_, g.weights_
         self.N = len(X)
+        #print "EM init:"
+        #print "Pi:", pi
+        #print "centers", means
+
 
         # begin Iteration procedure, we estimates the weights (pi) with a penalization, then Taum means, covars,
         # with the explicit solution from EM
@@ -46,15 +50,31 @@ class GraphLassoMix(BaseEstimator):
             # we remove clusters such that pi_j = 0
             non_zero_elements = np.nonzero(pi)[0]
             self.K = len(non_zero_elements)
+            #estimate tau
             pi, means, covars = np.array([pi[i] for i in non_zero_elements]), np.array(
                 [means[i] for i in non_zero_elements]), np.array([covars[i] for i in non_zero_elements])
             tau = self.tau(X, means, covars, pi)
+            #estimate means, covar t+1
             means = np.array([(tau[:, k] * X.T).sum(axis=1)
                               * 1 / (self.N * pi[k]) for k in range(self.K)])
             covars = np.array(
                 [self.covar(X, means[k], tau[:, k], pi[k]) for k in range(self.K)])
+            #Removing empty covar matrices
+            pi = [pi[j] for j in self.check_zero_matrix(covars)]
+            means = [means[j] for j in self.check_zero_matrix(covars)]
+            covars = [covars[j] for j in self.check_zero_matrix(covars) ]
+            print pi
         print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
         return pi, tau, means, covars
+
+    @staticmethod
+    def check_zero_matrix(mat_list):
+        non_zero_list = []
+        for i in range(len(mat_list)):
+            if np.count_nonzero(mat_list[i]) is not 0:
+                non_zero_list.append(i)
+        return non_zero_list
+
 
     def gradient(self, X, means, covars, pi_estim):
         """
@@ -68,7 +88,7 @@ class GraphLassoMix(BaseEstimator):
         grad = -np.array([
             multivariate_normal.pdf(X, means[l], covars[l]) /
             (np.array(
-                [pi_estim[
+              [pi_estim[
                     j] * multivariate_normal.pdf(X, means[j], covars[j]) for j in range(self.K)]
             ).T.sum(axis=1)
             ) + self.lambd_indi(l) for l in range(self.K)]).sum(axis=1)
@@ -100,17 +120,26 @@ class GraphLassoMix(BaseEstimator):
         # iterations FISTA
         t_previous = 1
         for i in range(self.fista_iter):
-            pi_next = self.simplex_proj(
-                xi - 1 / self.L * self.gradient(X, means, covars, xi))
+            try:
+                pi_est = xi - 1 / self.L * self.gradient(X, means, covars, xi)
+                pi_next = self.simplex_proj(pi_est)
+            except np.linalg.LinAlgError as e:
+                print "Error on the estimation of pi, skipping FISTA and returning previous pi, error", e
+                return pi_previous
+
             t_next = (1. + np.sqrt(1 + 4 * t_previous**2)) / 2
             xi = pi_next + (t_previous - 1) / t_next * (pi_next - pi_previous)
             pi_previous = np.copy(pi_next)
         return pi_next
 
     def tau(self, X, centers, covars, pi):
-        densities = np.array([multivariate_normal.pdf(X, centers[k], covars[k]) for k in range(len(pi))]).T * pi
-        s = densities.sum(axis=1)
-        return (densities.T/(densities.sum(axis=1))).T
+        try:
+            densities = np.array([multivariate_normal.pdf(X, centers[k], covars[k]) for k in range(len(pi))]).T * pi
+            return (densities.T/(densities.sum(axis=1))).T
+        except np.linalg.LinAlgError as e:
+            print "Error on density computation for tau", e
+
+
 
 
     def covar(self, X, mean, tau, pi):
