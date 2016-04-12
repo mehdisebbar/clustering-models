@@ -64,6 +64,7 @@ class GraphLassoMix(BaseEstimator):
             #Removing empty covar matrices
             pi = [pi[j] for j in self.check_zero_matrix(covars)]
             print pi
+            print self.check_zero_matrix(covars)
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
         print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
