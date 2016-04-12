@@ -1,10 +1,9 @@
 import numpy as np
-from cvxpy import *
 from scipy.stats import multivariate_normal
 from sklearn.base import BaseEstimator
 from sklearn.mixture import GMM
 from sklearn.utils import check_array
-from pprint import pprint
+
 
 #We authorize singular matrix in multivariate_normal, should scale data
 
@@ -67,6 +66,7 @@ class GraphLassoMix(BaseEstimator):
             print self.check_zero_matrix(covars)
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
+            self.K = len(means)
         print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
         return pi, tau, means, covars
 

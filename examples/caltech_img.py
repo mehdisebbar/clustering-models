@@ -1,14 +1,16 @@
-import cv2
-import numpy as np
 from os import listdir
 from os.path import isfile, join
-from scipy import ndimage
 
-orb = cv2.ORB(nfeatures=10)
-images = [f for f in listdir('/home/mehdi/projects/phd/examples/imgs/') if isfile(join('/home/mehdi/projects/phd/examples/imgs/', f))]
+import cv2
+import numpy as np
+
+from K_estim_pi_pen_EM import GraphLassoMix
+
+orb = cv2.ORB(nfeatures=50)
+images = [f for f in listdir('./imgs/') if isfile(join('./imgs/', f))]
 descriptor_dataset = []
 for img_path in images:
-    img = cv2.imread("/home/mehdi/projects/phd/examples/imgs/"+img_path)
+    img = cv2.imread("./imgs/" + img_path)
     resized = cv2.resize(img, (300,300), interpolation = cv2.INTER_AREA)
     kp = orb.detect(resized,None)
     _, des = orb.compute(resized, kp)
@@ -25,7 +27,5 @@ for d in desc_data:
     a.append(d[:min_desc])
 desc_data = np.array(a)
 
-from K_estim_pi_pen_EM import GraphLassoMix
-
-cl = GraphLassoMix(lambda_param=0.01, n_iter=15, max_clusters=6)
+cl = GraphLassoMix(lambda_param=0.001, n_iter=15, max_clusters=10)
 cl.fit(desc_data)
