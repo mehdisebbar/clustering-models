@@ -35,13 +35,13 @@ class GraphLassoMix(BaseEstimator):
         X = check_array(X, dtype=np.float64)
 
         # init with EM algorithm:
-        g = GMM(n_components=self.K)
+        g = GMM(n_components=self.K, covariance_type= "full")
         g.fit(X)
         means, covars, pi = g.means_, g.covars_, g.weights_
         self.N = len(X)
-        #print "EM init:"
-        #print "Pi:", pi
-        #print "centers", means
+        print "EM init:"
+        print "Pi:", pi
+        print "centers", means
 
 
         # begin Iteration procedure, we estimates the weights (pi) with a penalization, then Taum means, covars,
@@ -63,6 +63,7 @@ class GraphLassoMix(BaseEstimator):
                 [self.covar(X, means[k], tau[:, k], pi[k]) for k in range(self.K)])
             #Removing empty covar matrices
             pi = [pi[j] for j in self.check_zero_matrix(covars)]
+            print pi
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
         print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
