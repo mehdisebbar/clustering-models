@@ -9,7 +9,6 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from K_estim_pi_pen_EM import GraphLassoMix
-from tools.gm_tools import best_cont_matrix
 
 
 def eval_caltech_img(nfeatures, lambda_param, max_clusters):
@@ -56,13 +55,5 @@ if __name__ == '__main__':
     for r in res:
         print "---------------------------------------"
         print r["params"]
-        mat, permut, diag_sum = best_cont_matrix(y_real, r["labels"])
-        print "best cont Matrix: "
-        print mat
-        print "Best Permutation: "
-        print permut
-        print "Diagonal Sum:"
-        print diag_sum
-        print "Correctly assigned ratio: "
-        print 1.0 * diag_sum / len(y_real)
+        print "Number of clusters: ", len(set(r["labels"]))
         print zip(y_real, r["labels"])
