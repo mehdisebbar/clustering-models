@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from K_estim_pi_pen_EM import GraphLassoMix
+from tools.gm_tools import best_cont_matrix
 
 
 def eval_caltech_img(nfeatures, lambda_param, max_clusters):
@@ -35,7 +36,7 @@ def eval_caltech_img(nfeatures, lambda_param, max_clusters):
     sc = StandardScaler()
     cl = GraphLassoMix(lambda_param=lambda_param, n_iter=15, max_clusters=max_clusters)
     pi, y, means, covars = cl.fit(sc.fit_transform(desc_data))
-    return pi
+    return {"labels": y, "params": (nfeatures, lambda_param, max_clusters)}
 
 
 def multiple_arg_parser_caltech(t):
@@ -46,4 +47,9 @@ if __name__ == '__main__':
     param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
     params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
-    print(p.map(multiple_arg_parser_caltech, params_comb))
+    res = p.map(multiple_arg_parser_caltech, params_comb)
+    images = [f for f in listdir('./imgs/') if isfile(join('./imgs/', f))]
+    y_real = [int(img.split("_")[0]) for img in images]
+    for r in res:
+        print r["params"]
+        print best_cont_matrix(r["labels"], y_real)
