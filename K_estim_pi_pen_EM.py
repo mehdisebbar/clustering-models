@@ -40,7 +40,6 @@ class GraphLassoMix(BaseEstimator):
         # with the explicit solution from EM
 
         for j in range(self.n_iter):
-            print "Algo Iteration: ", j
             pi = self.pi_estim(X, means, covars, pi)
             # we remove clusters such that pi_j = 0
             non_zero_elements = np.nonzero(pi)[0]
@@ -55,7 +54,6 @@ class GraphLassoMix(BaseEstimator):
                 [self.covar(X, means[k], tau[:, k], pi[k]) for k in range(self.K)])
             #Removing empty covar matrices
             pi = [pi[j] for j in self.check_zero_matrix(covars)]
-            print pi
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
             self.K = len(pi)
