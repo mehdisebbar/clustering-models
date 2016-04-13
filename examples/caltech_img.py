@@ -65,3 +65,4 @@ if __name__ == '__main__':
         print diag_sum
         print "Correctly assigned ratio: "
         print 1.0 * diag_sum / len(y_real)
+        print zip(y_real, r["labels"])
