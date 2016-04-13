@@ -47,7 +47,7 @@ def multiple_arg_parser_caltech(t):
     return result
 
 if __name__ == '__main__':
-    param_list = [[100], [0.01, 0.1], [5]]  # nfeatures, lambda_param, max_clusters
+    param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
     params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
     res = p.map(multiple_arg_parser_caltech, params_comb)
