@@ -1,11 +1,15 @@
+import itertools
+from multiprocessing import Pool
 from os import listdir
 from os.path import isfile, join
 
 import cv2
+import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from K_estim_pi_pen_EM import GraphLassoMix
+
 
 def eval_caltech_img(nfeatures, lambda_param, max_clusters):
     orb = cv2.ORB(nfeatures=nfeatures)
@@ -30,14 +34,11 @@ def eval_caltech_img(nfeatures, lambda_param, max_clusters):
     desc_data = np.array(a)
     sc = StandardScaler()
     cl = GraphLassoMix(lambda_param=lambda_param, n_iter=15, max_clusters=max_clusters)
-    pi, tau, means, covars = cl.fit(sc.fit_transform(desc_data))
-    return pi, tau
+    pi, y, means, covars = cl.fit(sc.fit_transform(desc_data))
+    return pi
 
 if __name__ == '__main__':
-    for nfeatures in [50, 100, 200]:
-        for lambda_param in [0.01, 0.1, 1, 10]:
-            for max_clusters in [5, 10]:
-                pi,_ = eval_caltech_img(nfeatures, lambda_param, max_clusters)
-                print "nfeatures: ",nfeatures, " lambda_param: ",lambda_param, " max_clusters: ", max_clusters
-                print pi
-		print "=========================================================================="
+    param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
+    params_comb = list(itertools.product(*a))
+    p = Pool(joblib.cpu_count())
+    print(p.map(eval_caltech_img, params_comb))

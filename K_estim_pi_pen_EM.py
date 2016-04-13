@@ -59,7 +59,7 @@ class GraphLassoMix(BaseEstimator):
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
             self.K = len(pi)
-        return pi, tau, means, covars
+        return pi, tau.argmax(axis=1), means, covars
 
     @staticmethod
     def check_zero_matrix(mat_list):
