@@ -39,6 +39,6 @@ def eval_caltech_img(nfeatures, lambda_param, max_clusters):
 
 if __name__ == '__main__':
     param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
-    params_comb = list(itertools.product(*a))
+    params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
     print(p.map(eval_caltech_img, params_comb))
