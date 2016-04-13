@@ -3,6 +3,7 @@ from os.path import isfile, join
 
 import cv2
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 from K_estim_pi_pen_EM import GraphLassoMix
 
@@ -26,6 +27,6 @@ a = []
 for d in desc_data:
     a.append(d[:min_desc])
 desc_data = np.array(a)
-
+sc = StandardScaler()
 cl = GraphLassoMix(lambda_param=0.001, n_iter=15, max_clusters=10)
-cl.fit(desc_data)
+cl.fit(sc.fit_transform(desc_data))
