@@ -19,10 +19,6 @@ class GraphLassoMix(BaseEstimator):
         self.L = 1e5  # Lipschitz constant of grad
         eps = 0.1
         self.fista_iter = int(np.sqrt(self.K * self.L * eps) // 1)
-        print "-----------------------------------------"
-        print "Param Lambda =", lambda_param
-        print "Max clusters: ", max_clusters
-        print "Nombre d'iterations FISTA: ",self.fista_iter
         np.set_printoptions(linewidth = 200)
 
     def fit(self, X, y=None):
@@ -38,9 +34,6 @@ class GraphLassoMix(BaseEstimator):
         g.fit(X)
         means, covars, pi = g.means_, g.covars_, g.weights_
         self.N = len(X)
-        print "EM init:"
-        print "Pi:", pi
-        print "centers", means
 
 
         # begin Iteration procedure, we estimates the weights (pi) with a penalization, then Taum means, covars,
@@ -66,7 +59,6 @@ class GraphLassoMix(BaseEstimator):
             means = [means[j] for j in self.check_zero_matrix(covars)]
             covars = [covars[j] for j in self.check_zero_matrix(covars) ]
             self.K = len(pi)
-        print "Pi estim for lambda=",self.lambd_pi_pen," : ",pi
         return pi, tau, means, covars
 
     @staticmethod
