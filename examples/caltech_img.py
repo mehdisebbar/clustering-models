@@ -40,8 +40,11 @@ def eval_caltech_img(nfeatures, lambda_param, max_clusters):
 
 
 def multiple_arg_parser_caltech(t):
+    print "starting for", t
     nfeatures, lambda_param, max_clusters = t[0], t[1], t[2]
-    return eval_caltech_img(nfeatures, lambda_param, max_clusters)
+    result = eval_caltech_img(nfeatures, lambda_param, max_clusters)
+    print "Clustering ended for ", t
+    return result
 
 if __name__ == '__main__':
     param_list = [[100], [0.01, 0.1], [5]]  # nfeatures, lambda_param, max_clusters
