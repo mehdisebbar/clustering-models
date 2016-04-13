@@ -44,12 +44,21 @@ def multiple_arg_parser_caltech(t):
     return eval_caltech_img(nfeatures, lambda_param, max_clusters)
 
 if __name__ == '__main__':
-    param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
+    param_list = [[100], [0.01, 0.1], [5]]  # nfeatures, lambda_param, max_clusters
     params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
     res = p.map(multiple_arg_parser_caltech, params_comb)
     images = [f for f in listdir('./imgs/') if isfile(join('./imgs/', f))]
     y_real = [int(img.split("_")[0]) for img in images]
     for r in res:
+        print "---------------------------------------"
         print r["params"]
-        print best_cont_matrix(r["labels"], y_real)
+        mat, permut, diag_sum = best_cont_matrix(y_real, r["labels"])
+        print "best cont Matrix: "
+        print mat
+        print "Best Permutation: "
+        print permut
+        print "Diagonal Sum:"
+        print diag_sum
+        print "Correctly assigned ratio: "
+        print 1.0 * diag_sum / len(y_real)
