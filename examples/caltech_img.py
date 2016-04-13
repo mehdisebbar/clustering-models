@@ -37,8 +37,13 @@ def eval_caltech_img(nfeatures, lambda_param, max_clusters):
     pi, y, means, covars = cl.fit(sc.fit_transform(desc_data))
     return pi
 
+
+def multiple_arg_parser_caltech(t):
+    nfeatures, lambda_param, max_clusters = t[0], t[1], t[2]
+    return eval_caltech_img(nfeatures, lambda_param, max_clusters)
+
 if __name__ == '__main__':
     param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
     params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
-    print(p.map(eval_caltech_img, params_comb))
+    print(p.map(multiple_arg_parser_caltech, params_comb))
