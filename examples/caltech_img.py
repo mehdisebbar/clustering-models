@@ -2,13 +2,14 @@ import itertools
 from multiprocessing import Pool
 from os import listdir
 from os.path import isfile, join
-
+import pickle
+from datetime import datetime
 import cv2
 import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from K_estim_pi_pen_EM import GraphLassoMix
+from cluster.K_estim_pi_pen_EM import GraphLassoMix
 
 
 def eval_caltech_img(nfeatures, lambda_param, max_clusters):
@@ -46,7 +47,7 @@ def multiple_arg_parser_caltech(t):
     return result
 
 if __name__ == '__main__':
-    param_list = [[50, 100, 200], [0.01, 0.1, 1, 10], [5, 10]]  # nfeatures, lambda_param, max_clusters
+    param_list = [[50, 100, 150], [0.1, 1, 10], [6, 8]]  # nfeatures, lambda_param, max_clusters
     params_comb = list(itertools.product(*param_list))
     p = Pool(joblib.cpu_count())
     res = p.map(multiple_arg_parser_caltech, params_comb)
@@ -57,3 +58,4 @@ if __name__ == '__main__':
         print r["params"]
         print "Number of clusters: ", len(set(r["labels"]))
         print zip(y_real, r["labels"])
+    pickle.dump(res, open("res_caltech_simu"+str(param_list)+datetime.today().isoformat(),"wb"))
