@@ -40,6 +40,7 @@ class GraphLassoMix(BaseEstimator):
         # with the explicit solution from EM
 
         for j in range(self.n_iter):
+            print "iteration "+ str(j)
             pi = self.pi_estim(X, means, covars, pi)
             # we remove clusters such that pi_j = 0
             non_zero_elements = np.nonzero(pi)[0]
@@ -107,6 +108,7 @@ class GraphLassoMix(BaseEstimator):
         xi = np.copy(pi_previous)
 
         # iterations FISTA
+        print "Entering FISTA"
         t_previous = 1
         for i in range(self.fista_iter):
             try:
@@ -119,6 +121,7 @@ class GraphLassoMix(BaseEstimator):
             t_next = (1. + np.sqrt(1 + 4 * t_previous**2)) / 2
             xi = pi_next + (t_previous - 1) / t_next * (pi_next - pi_previous)
             pi_previous = np.copy(pi_next)
+        print "FISTA Done"
         return pi_next
 
 
