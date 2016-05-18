@@ -67,19 +67,18 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
 
 def gm_params_generator(d, k):
     """
-    We generate centers and verify that they are separated enough
-    :param d: dim
-    :param k: number of clusters
-    :param dist: min distance between clusters
+    We generate centers in [-0.5, 0.5] and verify that they are separated enough
+    we scatter the unit square on k squares, the min distance c/sqrt(k)
     """
-    centers = [20*np.random.rand(1, d)[0]-10]
+    min_center_dist = 0.1/np.sqrt(k)
+    centers = [np.random.rand(1, d)[0]-0.5]
     for i in range(k-1):
-        center = 20*np.random.rand(1, d)[0]-10
+        center = np.random.rand(1, d)[0]-0.5
         distances = np.linalg.norm(
             np.array(centers) - np.array(center),
             axis=1)
-        while len(distances[distances < 0.0]) > 0:
-            center = 20*np.random.rand(1, d)[0]-10
+        while len(distances[distances < min_center_dist]) > 0:
+            center = np.random.rand(1, d)[0]-0.5
             distances = np.linalg.norm(
                 np.array(centers) - np.array(center),
                 axis=1)
