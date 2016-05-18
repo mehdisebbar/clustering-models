@@ -18,7 +18,8 @@ class GraphLassoMix(BaseEstimator):
         self.lambd_pi_pen = lambda_param
         self.L = 1e5  # Lipschitz constant of grad
         eps = 0.1
-        self.fista_iter = int(np.sqrt(self.K * self.L * eps) // 1)
+        self.fista_iter = int(np.sqrt(self.K * self.L * eps) // 1) 
+        #self.fista_iter = 100
         np.set_printoptions(linewidth = 200)
 
     def fit(self, X, y=None):
@@ -27,11 +28,13 @@ class GraphLassoMix(BaseEstimator):
         :param y:
         :return:
         """
+        print "Starting`"
         X = check_array(X, dtype=np.float64)
 
         # init with EM algorithm:
         g = GMM(n_components=self.K, covariance_type= "full")
         g.fit(X)
+        print "GMM init done"
         means, covars, pi = g.means_, g.covars_, g.weights_
         self.N = len(X)
 
@@ -58,6 +61,7 @@ class GraphLassoMix(BaseEstimator):
             means = [means[j] for j in check_zero_matrix(covars)]
             covars = [covars[j] for j in check_zero_matrix(covars) ]
             self.K = len(pi)
+            print pi
         return pi, tau.argmax(axis=1), means, covars
 
     def gradient(self, X, means, covars, pi_estim):
