@@ -64,7 +64,7 @@ class sqrt_lasso_gmm(BaseEstimator):
             K = len(self.pi_)
             if self.verbose and it % 10 == 0:
                 print "iteration ", it, "pi: ", self.pi_
-            return self
+        return self
 
     def pi_sqrt_lasso_reduced_estim_fista(self, X, means, covars, pi):
         """
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # avec pi_i non ordonnés
     max_clusters = 5
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=10, Lipshitz_c=1, lambda_param=lambd)
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, Lipshitz_c=10, lambda_param=lambd, verbose=True)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
