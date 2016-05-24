@@ -33,7 +33,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         # initialization of the algorithm
         self.EPSILON = 1e-8
-        self.fista_iter = 300
+        self.fista_iter = 500
         g = GMM(n_components=self.p, covariance_type="full")
         g.fit(X)
         self.means_, self.covars_, self.pi_ = g.means_, g.covars_, g.weights_
