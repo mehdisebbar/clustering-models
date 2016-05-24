@@ -1,12 +1,28 @@
-def benchmark(algo, params, datasets):
+import plotly.graph_objs as go
+from plotly.offline import plot
+
+
+def view2Ddata(X):
     """
-    A benchmark to evaluate the performance of a given clustering algorithm with EM on different datasets
-    For EM: run EM algorithm on different values of K
-    For Algorithm 
-
-
-    :param algo:
-    :param params:
-    :param datasets: a list of datasets, simulated or real data
+    Plot the sample, Only in 2D
+    :param X:
     :return:
     """
+    # Create random data with numpy,
+    import numpy as np
+
+    N = 1000
+    random_x = np.random.randn(N)
+    random_y = np.random.randn(N)
+
+    # Create a trace
+    trace = go.Scatter(
+        x=X[:, 0],
+        y=X[:, 1],
+        mode='markers'
+    )
+
+    data = [trace]
+
+    # Plot and embed in ipython notebook!
+    plot(data, filename='Plot')

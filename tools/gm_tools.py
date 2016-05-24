@@ -1,9 +1,11 @@
-import numpy as np
-from numpy.random import multivariate_normal, multinomial
-from sklearn.datasets import make_sparse_spd_matrix
-from sklearn.cross_validation import train_test_split
 from itertools import permutations
+
+import numpy as np
 import scipy.stats
+from numpy.random import multivariate_normal, multinomial
+from scipy import random
+from sklearn.cross_validation import train_test_split
+from sklearn.datasets import make_sparse_spd_matrix
 
 
 class DatasetGenTool(object):
@@ -48,7 +50,7 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     nb_of_clusters = len(pi)
     space_dimension = len(centers[0])
     sample_repartition_among_clusters = multinomial(N, pi, size=1)[0]
-    Z = np.zeros((N, space_dimension+1))
+    Z = np.zeros([N, space_dimension + 1])
     labels = []
     for i in range(nb_of_clusters):
         labels += [i for _ in range(sample_repartition_among_clusters[i])]
@@ -65,11 +67,11 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     return Z[:, range(space_dimension)], Z[:, space_dimension]
 
 
-def gm_params_generator(d, k):
+def gm_params_generator(d, k, sparse_proba=None):
     """
     We generate centers in [-0.5, 0.5] and verify that they are separated enough
-    we scatter the unit square on k squares, the min distance c/sqrt(k)
     """
+    #  we scatter the unit square on k squares, the min distance is given by c/sqrt(k)
     min_center_dist = 0.1/np.sqrt(k)
     centers = [np.random.rand(1, d)[0]-0.5]
     for i in range(k-1):
@@ -83,14 +85,17 @@ def gm_params_generator(d, k):
                 np.array(centers) - np.array(center),
                 axis=1)
         centers.append(center)
-
-    cov = np.array([50*np.linalg.inv(
-        make_sparse_spd_matrix(d, alpha=0.8)
-    ) for _ in range(k)])
+    # if sparse_proba is set :
+    #    generate covariance matrix with the possibility to set the sparsity on the precision matrix,
+    # we multiply by 1/k^2 to avoid overlapping
+    if sparse_proba == None:
+        A = [random.rand(d, d) for _ in range(k)]
+        cov = [1e-2 / (k ** 2) * (np.diag(np.ones(d)) + np.dot(a, a.transpose())) for a in A]
+    else:
+        cov = np.array([np.linalg.inv(make_sparse_spd_matrix(d, alpha=sparse_proba)) for _ in range(k)])
     p = np.random.randint(1000, size=(1, k))[0]
     weights = 1.0*p/p.sum()
     return weights, centers, cov
-
 
 def get_centers_order(real_centers, estim_centers):
     """
@@ -172,3 +177,39 @@ def cluster_match(y_real, y_estim):
 def gauss_mix_density(x, pi, means, covars):
     return np.array([pi[j] * scipy.stats.multivariate_normal.pdf(
         x, means[j], covars[j]) for j in range(len(pi))]).sum()
+
+
+def tau_estim(X, centers, covars, pi):
+    """
+    return the conditional probability matrix P(z=k/X_i) for a gaussian mixture. Expectation step in EM
+    """
+    from scipy.stats import multivariate_normal
+    try:
+        densities = np.array(
+            [multivariate_normal.pdf(X, centers[k], covars[k], allow_singular=True) for k in range(len(pi))]).T * pi
+        return (densities.T / (densities.sum(axis=1))).T
+    except np.linalg.LinAlgError as e:
+        print "Error on density computation for tau", e
+
+
+def covar_estim(X, mean, tau, pi):
+    """
+    empirical covariance matrix of EM
+    :param mean: mean for one cluster
+    :param pi: pi for this cluster
+    :param N: lenth of X
+    :param tau: vector of proba for each X[i] in the cluster, given by tau[:,k]
+    :return: emp covariance matrix of this cluster
+    """
+    N = len(X)
+    Z = np.sqrt(tau).reshape(N, 1) * (X - mean)
+    return 1 / (pi * N) * Z.T.dot(Z)
+
+
+def score(X, weights, means, covars):
+    """
+    Loglikelihood of the GM model with param (weights, centers, covars) on the dataset X
+    """
+    from scipy.stats import multivariate_normal
+    return 1. / X.shape[0] * np.log((np.array([multivariate_normal.pdf(
+        X, means[i], covars[i]) for i in range(len(weights))]).T * weights).sum(axis=1)).sum(axis=0)
