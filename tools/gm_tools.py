@@ -91,7 +91,7 @@ def gm_params_generator(d, k, sparse_proba=None, alpha = 5):
     # we multiply by 1/k^2 to avoid overlapping
     if sparse_proba == None:
         A = [random.rand(d, d) for _ in range(k)]
-        cov = [alpha*1e-2w / (k ** 2) * (np.diag(np.ones(d)) + np.dot(a, a.transpose())) for a in A]
+        cov = [alpha * 1e-2 / (k ** 2) * (np.diag(np.ones(d)) + np.dot(a, a.transpose())) for a in A]
     else:
         cov = np.array([np.linalg.inv(make_sparse_spd_matrix(d, alpha=sparse_proba)) for _ in range(k)])
     p = np.random.randint(1000, size=(1, k))[0]
