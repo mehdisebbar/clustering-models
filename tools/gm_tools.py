@@ -211,5 +211,5 @@ def score(X, weights, means, covars):
     Loglikelihood of the GM model with param (weights, centers, covars) on the dataset X
     """
     from scipy.stats import multivariate_normal
-    return 1. / X.shape[0] * np.log((np.array([multivariate_normal.pdf(
+    return np.log((np.array([multivariate_normal.pdf(
         X, means[i], covars[i]) for i in range(len(weights))]).T * weights).sum(axis=1)).sum(axis=0)
