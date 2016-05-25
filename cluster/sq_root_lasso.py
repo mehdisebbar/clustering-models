@@ -22,8 +22,8 @@ class sqrt_lasso_gmm(BaseEstimator):
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
                 "n_iter": self.n_iter,
-                "lambda_param": self.lambd,
-                "Lipshitz_c": self.lipz_c,
+                "lambd": self.lambd,
+                "lipz_c": self.lipz_c,
                 "verbose": self.verbose}
 
     def fit(self, X, y=None):
