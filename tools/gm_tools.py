@@ -67,20 +67,21 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     return Z[:, range(space_dimension)], Z[:, space_dimension]
 
 
-def gm_params_generator(d, k, sparse_proba=None):
+def gm_params_generator(d, k, sparse_proba=None, alpha = 5):
     """
     We generate centers in [-0.5, 0.5] and verify that they are separated enough
+    alpha is the size of the grid
     """
-    #  we scatter the unit square on k squares, the min distance is given by c/sqrt(k)
-    min_center_dist = 0.1/np.sqrt(k)
-    centers = [np.random.rand(1, d)[0]-0.5]
+    #  we scatter the unit square on k squares, the min distance is given by alpha/sqrt(k)
+    min_center_dist = alpha/np.sqrt(k)
+    centers = [alpha*(np.random.rand(1, d)[0]-0.5)]
     for i in range(k-1):
-        center = np.random.rand(1, d)[0]-0.5
+        center = alpha*(np.random.rand(1, d)[0]-0.5)
         distances = np.linalg.norm(
             np.array(centers) - np.array(center),
             axis=1)
         while len(distances[distances < min_center_dist]) > 0:
-            center = np.random.rand(1, d)[0]-0.5
+            center = alpha*(np.random.rand(1, d)[0]-0.5)
             distances = np.linalg.norm(
                 np.array(centers) - np.array(center),
                 axis=1)
@@ -90,7 +91,7 @@ def gm_params_generator(d, k, sparse_proba=None):
     # we multiply by 1/k^2 to avoid overlapping
     if sparse_proba == None:
         A = [random.rand(d, d) for _ in range(k)]
-        cov = [1e-2 / (k ** 2) * (np.diag(np.ones(d)) + np.dot(a, a.transpose())) for a in A]
+        cov = [alpha*1e-2w / (k ** 2) * (np.diag(np.ones(d)) + np.dot(a, a.transpose())) for a in A]
     else:
         cov = np.array([np.linalg.inv(make_sparse_spd_matrix(d, alpha=sparse_proba)) for _ in range(k)])
     p = np.random.randint(1000, size=(1, k))[0]
