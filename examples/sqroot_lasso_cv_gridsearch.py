@@ -15,6 +15,6 @@ max_clusters = 8
 lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
 param = {"lambda_param": [0, 0.01, 0.1, 1], "Lipshitz_c": [1, 10, 100, 1000]}
 clf = GridSearchCV(estimator=sqrt_lasso_gmm(lambda_param=1, Lipshitz_c=1, n_iter=100, max_clusters=8, verbose=False),
-                   param_grid=param, cv=5, n_jobs=1)
+                   param_grid=param, cv=5, n_jobs=-1)
 clf.fit(X_train, y_train)
 print clf.best_params_

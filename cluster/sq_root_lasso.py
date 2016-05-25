@@ -12,18 +12,18 @@ from tools.matrix_tools import check_zero_matrix
 
 
 class sqrt_lasso_gmm(BaseEstimator):
-    def __init__(self, lambda_param=1, Lipshitz_c=1, n_iter=100, max_clusters=8, verbose=False):
-        self.p = max_clusters
+    def __init__(self, lambd=1, lipz_c=1, n_iter=100, max_clusters=8, verbose=False):
+        self.max_clusters = max_clusters
         self.n_iter = n_iter
-        self.lambd = lambda_param
-        self.L = Lipshitz_c
+        self.lambd = lambd
+        self.lipz_c = lipz_c
         self.verbose = verbose
 
     def get_params(self, deep=True):
-        return {"max_clusters": self.p,
+        return {"max_clusters": self.max_clusters,
                 "n_iter": self.n_iter,
                 "lambda_param": self.lambd,
-                "Lipshitz_c": self.L,
+                "Lipshitz_c": self.lipz_c,
                 "verbose": self.verbose}
 
     def fit(self, X, y=None):
@@ -34,7 +34,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         # initialization of the algorithm
         self.EPSILON = 1e-8
         self.fista_iter = 500
-        g = GMM(n_components=self.p, covariance_type="full")
+        g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
         self.means_, self.covars_, self.pi_ = g.means_, g.covars_, g.weights_
         if self.verbose:
@@ -80,7 +80,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         # we took ||pi_hat-pi_star||**2 = len(pi)**2
         # fista_iter = int(np.sqrt(2*len(pi)**2 * self.L) // 1)
         for _ in range(self.fista_iter):
-            grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.L) * self.grad_sqrt_penalty(X, means, covars, xi)
+            grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(X, means, covars, xi)
             alpha_next = self.proj_unit_disk(grad_step)
             t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
@@ -117,7 +117,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         Loglikelihood of the model on the dataset X
         """
-        return 1. / X.shape[0] * np.log((np.array([multivariate_normal.pdf(
+        return np.log((np.array([multivariate_normal.pdf(
             X, self.means_[i], self.covars_[i]) for i in range(len(self.pi_))]).T * self.pi_).sum(axis=1)).sum(axis=0)
 
 
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # avec pi_i non ordonnés
     max_clusters = 5
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, Lipshitz_c=10, lambda_param=lambd, verbose=True)
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=10, lambd=lambd, verbose=True)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
