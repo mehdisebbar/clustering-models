@@ -18,6 +18,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.lambd = lambd
         self.lipz_c = lipz_c
         self.verbose = verbose
+        self._n_parameters = max_clusters
 
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
@@ -65,6 +66,8 @@ class sqrt_lasso_gmm(BaseEstimator):
             K = len(self.weights_)
             if self.verbose and it % 10 == 0:
                 print "iteration ", it, "pi: ", self.weights_
+        # Only for the bic scorer in cross_validation
+        self._n_parameters = len(self.weights_)
         return self
 
     def pi_sqrt_lasso_reduced_estim_fista(self, X, means, covars, pi):
