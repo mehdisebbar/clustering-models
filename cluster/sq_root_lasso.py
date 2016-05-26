@@ -32,7 +32,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         We use a expectation/maximization algorithm with a lasso penalization on the weights vector
         """
         # initialization of the algorithm
-        self.EPSILON = 1e-8
+        self.EPSILON = 1e-20
         self.fista_iter = 500
         g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
