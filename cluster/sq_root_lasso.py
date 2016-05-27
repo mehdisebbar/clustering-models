@@ -69,7 +69,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         return self
 
     def _n_parameters(self):
-        return len(self.weights_)
+        return len(self.weights_) * X.shape[1] ** 2 + X.shape[1] * len(self.means_) + len(self.weights_)
 
     def pi_sqrt_lasso_reduced_estim_fista(self, X, means, covars, pi):
         """
@@ -148,3 +148,4 @@ if __name__ == '__main__':
     print "estimated means", cl.means_
     print "score: ", cl.score(X)
     print "score L*: ", score(X, pi, means, covars)
+    print cl._n_parameters()
