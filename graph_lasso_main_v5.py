@@ -7,11 +7,10 @@ from tools.gm_tools import gaussian_mixture_sample, gm_params_generator, best_co
 
 
 def main(d,k,N):
-
-    weights, centers, cov = gm_params_generator(d,k)
+    weights, centers, cov = gm_params_generator(d, k, alpha=1)
 
     X, Y = gaussian_mixture_sample(weights, centers, cov, N)
-    lasso = GraphLassoMix(n_components=k, n_iter=5)
+    lasso = GraphLassoMix(n_components=k, n_iter=20)
     t1_lasso = time()
     lasso.fit(X)
     t2_lasso=time()
@@ -43,9 +42,9 @@ def algo_score(Y, y_estim, t):
     print t, 's'
 
 if __name__ == '__main__':
-    dim_range = [4]
-    N_range = [100]
-    k_range = [4]
+    dim_range = [50]
+    N_range = [1000]
+    k_range = [5]
     for n in N_range:
         for k in k_range:
             for d in dim_range:

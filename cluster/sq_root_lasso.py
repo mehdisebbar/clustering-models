@@ -36,35 +36,40 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.fista_iter = 500
         g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
-        self.means_, self.covars_, self.pi_ = g.means_, g.covars_, g.weights_
+        self.means_, self.covars_, self.weights_ = g.means_, g.covars_, g.weights_
         if self.verbose:
-            print "Init EM pi: ", self.pi_
+            print "Init EM pi: ", self.weights_
         self.N = len(X)
-        K = len(self.pi_)
+        K = len(self.weights_)
         for it in range(self.n_iter):
             # We estimate pi according to the penalities lambdas given
-            self.pi_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.pi_)
+            self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
-            non_zero_elements = np.nonzero(self.pi_)[0]
+            non_zero_elements = np.nonzero(self.weights_)[0]
             K = len(non_zero_elements)
-            self.pi_ = np.array([self.pi_[i] for i in non_zero_elements])
+            self.weights_ = np.array([self.weights_[i] for i in non_zero_elements])
             self.means_ = np.array([self.means_[i] for i in non_zero_elements])
             self.covars_ = np.array([self.covars_[i] for i in non_zero_elements])
             # we estimate the conditional probability P(z=j/X[i])
-            self.tau = tau_estim(X, self.means_, self.covars_, self.pi_)
+            self.tau = tau_estim(X, self.means_, self.covars_, self.weights_)
             # Means
-            self.means_ = np.array([(self.tau[:, k] * X.T).sum(axis=1) * 1 / (self.N * self.pi_[k]) for k in range(K)])
+            self.means_ = np.array(
+                [(self.tau[:, k] * X.T).sum(axis=1) * 1 / (self.N * self.weights_[k]) for k in range(K)])
             # covars
             covars_temp = np.array(
-                [covar_estim(X, self.means_[k], self.tau[:, k], self.pi_[k]) for k in range(K)])
+                [covar_estim(X, self.means_[k], self.tau[:, k], self.weights_[k]) for k in range(K)])
             non_empty_covar_idx = check_zero_matrix(covars_temp)
-            self.pi_ = [self.pi_[j] for j in non_empty_covar_idx]
+            self.weights_ = [self.weights_[j] for j in non_empty_covar_idx]
             self.means_ = [self.means_[j] for j in non_empty_covar_idx]
             self.covars_ = [self.covars_[j] for j in non_empty_covar_idx]
-            K = len(self.pi_)
+            K = len(self.weights_)
             if self.verbose and it % 10 == 0:
-                print "iteration ", it, "pi: ", self.pi_
+                print "iteration ", it, "pi: ", self.weights_
+        # Only for the bic scorer in cross_validation
         return self
+
+    def _n_parameters(self):
+        return len(self.weights_) * len(self.means_[0]) ** 2 + self.N * len(self.means_) + len(self.weights_)
 
     def pi_sqrt_lasso_reduced_estim_fista(self, X, means, covars, pi):
         """
@@ -118,7 +123,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         Loglikelihood of the model on the dataset X
         """
         return np.log((np.array([multivariate_normal.pdf(
-            X, self.means_[i], self.covars_[i]) for i in range(len(self.pi_))]).T * self.pi_).sum(axis=1)).sum(axis=0)
+            X, self.means_[i], self.covars_[i]) for i in range(len(self.weights_))]).T * self.weights_).sum(
+            axis=1)).sum(axis=0)
 
 
 if __name__ == '__main__':
@@ -133,12 +139,13 @@ if __name__ == '__main__':
     # avec pi_i non ordonnés
     max_clusters = 5
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=10, lambd=lambd, verbose=True)
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=10, lipz_c=10, lambd=lambd, verbose=True)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
-    print "estimated pi: ", cl.pi_
+    print "estimated pi: ", cl.weights_
     print "real means", means
     print "estimated means", cl.means_
     print "score: ", cl.score(X)
     print "score L*: ", score(X, pi, means, covars)
+    print cl._n_parameters()
