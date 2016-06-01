@@ -12,12 +12,13 @@ from tools.matrix_tools import check_zero_matrix
 
 
 class sqrt_lasso_gmm(BaseEstimator):
-    def __init__(self, lambd=1, lipz_c=1, n_iter=100, max_clusters=8, verbose=False):
+    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=300, max_clusters=8, verbose=False):
         self.max_clusters = max_clusters
         self.n_iter = n_iter
         self.lambd = lambd
         self.lipz_c = lipz_c
         self.verbose = verbose
+        self.fista_iter = fista_iter
 
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
@@ -33,7 +34,6 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         # initialization of the algorithm
         self.EPSILON = 1e-20
-        self.fista_iter = 300
         g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
         self.means_, self.covars_, self.weights_ = g.means_, g.covars_, g.weights_
