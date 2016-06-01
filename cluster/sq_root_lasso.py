@@ -33,7 +33,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         # initialization of the algorithm
         self.EPSILON = 1e-20
-        self.fista_iter = 500
+        self.fista_iter = 300
         g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
         self.means_, self.covars_, self.weights_ = g.means_, g.covars_, g.weights_
@@ -64,7 +64,7 @@ class sqrt_lasso_gmm(BaseEstimator):
             self.covars_ = [self.covars_[j] for j in non_empty_covar_idx]
             K = len(self.weights_)
             if self.verbose and it % 10 == 0:
-                print "iteration ", it, "pi: ", self.weights_
+                print "iteration", it, " lambda:", self.lambd, " L: ", self.lipz_c, " pi: ", self.weights_
         # Only for the bic scorer in cross_validation
         return self
 
