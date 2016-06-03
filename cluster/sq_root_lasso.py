@@ -12,7 +12,7 @@ from tools.matrix_tools import check_zero_matrix
 
 
 class sqrt_lasso_gmm(BaseEstimator):
-    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=300, max_clusters=8, verbose=False):
+    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=200, max_clusters=8, verbose=False):
         self.max_clusters = max_clusters
         self.n_iter = n_iter
         self.lambd = lambd
@@ -33,7 +33,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         We use a expectation/maximization algorithm with a lasso penalization on the weights vector
         """
         # initialization of the algorithm
-        self.EPSILON = 1e-20
+        self.EPSILON = 1e-10
         g = GMM(n_components=self.max_clusters, covariance_type="full")
         g.fit(X)
         self.means_, self.covars_, self.weights_ = g.means_, g.covars_, g.weights_
@@ -43,7 +43,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         K = len(self.weights_)
         for it in range(self.n_iter):
             # We estimate pi according to the penalities lambdas given
-            self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
+            self.weights_ = self.nmapg_pi_estim(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
             non_zero_elements = np.nonzero(self.weights_)[0]
             K = len(non_zero_elements)
@@ -94,23 +94,77 @@ class sqrt_lasso_gmm(BaseEstimator):
         # We return the squared vector to obtain a probability vector sum = 1
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
+    def nmapg_pi_estim(self, X, means, covars, pi, alpha_x=0.1, alpha_y=0.1, eta=0.5, delta=0.5):
+        """
+        lasso with square root of pi estimation
+        We use non monotone accelerated proximal gradient method to accelerate the convergence of the algorithm
+        we project the next step (squared) of the gradient descent on the unit circle
+        """
+        x_previous = np.copy(np.sqrt(pi[:-1]))
+        x_next = np.copy(x_previous)
+        z_next = np.copy(x_previous)
+        t_next, t_previous = 1., 0.
+        c_next = self.f(X, means, covars, x_next)
+        q_next = 1
+        for i in range(self.fista_iter):
+            y_next = x_next + t_previous / t_next * (z_next - x_next) + (t_previous - 1) / t_next * (
+            x_next - x_previous)
+            if len(np.isnan(y_next)[np.isnan(y_next)]):
+                print "fista iter", i
+                print "y_next", y_next
+                print "x_next", x_next
+                print "x_previous", x_previous
+                return 0
+            z_next = self.proj_unit_disk(y_next - alpha_y * self.grad_sqrt_penalty(X, means, covars, y_next))
+            x_previous = np.copy(x_next)
+            if self.f(X, means, covars, z_next) <= (c_next - delta * np.linalg.norm(z_next - y_next) ** 2):
+                x_next = z_next
+            else:
+                v_next = self.proj_unit_disk(x_next - alpha_x * self.grad_sqrt_penalty(X, means, covars, x_next))
+                x_next = z_next if self.f(X, means, covars, z_next) <= self.f(X, means, covars, v_next) else v_next
+            t_previous = np.copy(t_next)
+            t_next = (np.sqrt(4 * t_previous ** 2 + 1) + 1) / 2
+            q_previous = np.copy(q_next)
+            q_next = eta * q_previous + 1
+            c_next = (eta * q_previous * c_next + self.f(X, means, covars, x_next)) / q_next
+        return np.append(x_next ** 2, max(0, 1 - np.linalg.norm(x_next) ** 2))
+
+    def f(self, X, means, covars, alpha):
+        """
+        evaluate penalized loglikelihood for a given pi
+        used in nmapg_pi_estim
+        """
+        dens_last_comp = multivariate_normal.pdf(X, means[len(alpha)], covars[len(alpha)])
+        dens_witht_p_comp = np.array(
+            [multivariate_normal.pdf(X, means[i], covars[i]) - dens_last_comp for i in range(len(alpha))]).T
+        # We reshape for the division and add EPSILON to avoid zero division
+        # we add the lambda penalit
+        try:
+            res = - 1. / X.shape[0] * (
+                np.log((alpha ** 2 * dens_witht_p_comp).sum(axis=1) + dens_last_comp.reshape(
+                    X.shape[0]))).sum() + self.lambd * (alpha.sum())
+        except:
+            pass
+        return res
+
+
     def grad_sqrt_penalty(self, X, means, covars, alpha):
         """
         alpha is of dim p-1
         density is of dim p-1
         Evaluate the gradient of
         """
-        dens_last_comp = multivariate_normal.pdf(X, means[len(alpha)], covars[len(alpha)]).reshape(X.shape[0], 1)
-        dens_witht_p_comp = np.array(
-            [multivariate_normal.pdf(X, means[i], covars[i]) for i in range(len(alpha))]).T - dens_last_comp
+        dens_last_comp = multivariate_normal.pdf(X, means[len(alpha)], covars[len(alpha)])
+        dens_with_p_comp = np.array(
+            [multivariate_normal.pdf(X, means[i], covars[i]) - dens_last_comp for i in range(len(alpha))]).T
         # We reshape for the division and add EPSILON to avoid zero division
         # we add the lambda penality
-        return self.lambd - 2. / X.shape[0] * (alpha * dens_witht_p_comp /
-                                               (self.EPSILON + dens_last_comp + ((alpha ** 2) * dens_witht_p_comp).sum(
-                                                   axis=1)
-                                                .reshape(X.shape[0], 1))).sum(axis=0)
+        num = 2 * alpha * dens_with_p_comp
+        den = (self.EPSILON + dens_last_comp + ((alpha ** 2) * dens_with_p_comp).sum(axis=1)).reshape(X.shape[0], 1)
+        return self.lambd - 1. / X.shape[0] * (num / den).sum(axis=0)
 
-    def proj_unit_disk(self, v):
+    @staticmethod
+    def proj_unit_disk(v):
         """
         we receive a vector [v1,v2,...,vp] and project [v1,v2,...,vp-1] on the unit disk.
         """
@@ -132,15 +186,14 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 3)
-    means = [np.array([0, 0]), np.array([1, 1]), np.array([0, 2])]
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
+    pi, means, covars = gm_params_generator(2, 3, min_center_dist=0.1)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
     view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 5
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=10, lipz_c=10, lambd=lambd, verbose=True)
+    max_clusters = 8
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 10
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=10, lambd=lambd, verbose=True)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
