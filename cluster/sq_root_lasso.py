@@ -94,7 +94,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         # We return the squared vector to obtain a probability vector sum = 1
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
-    def nmapg_pi_estim(self, X, means, covars, pi, alpha_x=0.1, alpha_y=0.1, eta=0.5, delta=0.5):
+    def nmapg_pi_estim(self, X, means, covars, pi, alpha_x=0.1, alpha_y=0.1, eta=0.8, delta=0.5):
         """
         lasso with square root of pi estimation
         We use non monotone accelerated proximal gradient method to accelerate the convergence of the algorithm
@@ -191,9 +191,9 @@ if __name__ == '__main__':
     view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 8
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 10
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=10, lambd=lambd, verbose=True)
+    max_clusters = 10
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
