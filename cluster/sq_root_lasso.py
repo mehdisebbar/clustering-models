@@ -6,6 +6,7 @@ from scipy.stats import multivariate_normal
 from sklearn.base import BaseEstimator
 from sklearn.mixture import GMM
 
+import apgpy as apg
 from tools.algorithms_benchmark import view2Ddata
 from tools.gm_tools import gm_params_generator, gaussian_mixture_sample, covar_estim, score, tau_estim
 from tools.matrix_tools import check_zero_matrix
@@ -40,10 +41,11 @@ class sqrt_lasso_gmm(BaseEstimator):
         if self.verbose:
             print "Init EM pi: ", self.weights_
         self.N = len(X)
+        self.X = X
         K = len(self.weights_)
         for it in range(self.n_iter):
             # We estimate pi according to the penalities lambdas given
-            self.weights_ = self.nmapg_pi_estim(X, self.means_, self.covars_, self.weights_)
+            self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
             non_zero_elements = np.nonzero(self.weights_)[0]
             K = len(non_zero_elements)
@@ -92,6 +94,11 @@ class sqrt_lasso_gmm(BaseEstimator):
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
             alpha_previous = np.copy(alpha_next)
         # We return the squared vector to obtain a probability vector sum = 1
+        return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
+
+    def apgpy_pi_estim(self, X, means, covars, pi):
+
+        alpha_next = apg.solve(self.grad_sqrt_penalty, self.proj_unit_disk, np.sqrt(pi[:-1]), quiet=True)
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
     def nmapg_pi_estim(self, X, means, covars, pi, alpha_x=0.1, alpha_y=0.1, eta=0.8, delta=0.5):
@@ -147,13 +154,14 @@ class sqrt_lasso_gmm(BaseEstimator):
             pass
         return res
 
-
-    def grad_sqrt_penalty(self, X, means, covars, alpha):
+    def grad_sqrt_penalty(self, alpha, X=None, means=None, covars=None):
         """
         alpha is of dim p-1
         density is of dim p-1
         Evaluate the gradient of
         """
+        if X == None:
+            X, means, covars = self.X, self.means_, self.covars_
         dens_last_comp = multivariate_normal.pdf(X, means[len(alpha)], covars[len(alpha)])
         dens_with_p_comp = np.array(
             [multivariate_normal.pdf(X, means[i], covars[i]) - dens_last_comp for i in range(len(alpha))]).T
@@ -164,7 +172,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         return self.lambd - 1. / X.shape[0] * (num / den).sum(axis=0)
 
     @staticmethod
-    def proj_unit_disk(v):
+    def proj_unit_disk(v, t=None):
         """
         we receive a vector [v1,v2,...,vp] and project [v1,v2,...,vp-1] on the unit disk.
         """
@@ -191,9 +199,9 @@ if __name__ == '__main__':
     view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 10
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=100, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
+    max_clusters = 6
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 10
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=200, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
     print "real pi: ", pi
     cl.fit(X)
