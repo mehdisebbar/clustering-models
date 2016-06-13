@@ -15,3 +15,10 @@ def check_zero_matrix(mat_list):
         if np.count_nonzero(mat_list[i]) is not 0:
             non_zero_list.append(i)
     return non_zero_list
+
+
+def clean_nans(x):
+    if np.isnan(x).any():
+        return np.nan_to_num(x)
+    else:
+        return x
