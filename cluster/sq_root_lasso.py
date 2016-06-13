@@ -111,7 +111,6 @@ class sqrt_lasso_gmm(BaseEstimator):
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
     def apgpy_pi_estim(self, X, means, covars, pi):
-
         alpha_next = apg.solve(self.grad_sqrt_penalty, self.proj_unit_disk, np.sqrt(pi[:-1]), quiet=True)
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
