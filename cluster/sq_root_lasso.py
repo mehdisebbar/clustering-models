@@ -13,7 +13,7 @@ from grad_descent_algs import nmapg_linesearch
 from tools.algorithms_benchmark import view2Ddata
 from tools.gm_tools import gm_params_generator, gaussian_mixture_sample, covar_estim, score, tau_estim
 from tools.math import proj_unit_disk
-from tools.matrix_tools import check_zero_matrix
+from tools.matrix_tools import check_zero_matrix, clean_nans
 
 
 class sqrt_lasso_gmm(BaseEstimator):
@@ -49,6 +49,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         K = len(self.weights_)
         for it in range(self.n_iter):
             # We estimate pi according to the penalities lambdas given
+            self.means_ = clean_nans(self.means_)
+            self.weights_ = clean_nans(self.weights_)
             self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
             non_zero_elements = np.nonzero(self.weights_)[0]
@@ -104,8 +106,6 @@ class sqrt_lasso_gmm(BaseEstimator):
             alpha_next = proj_unit_disk(grad_step)
             t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
-            if np.isnan(xi).any():
-                xi = np.nan_to_num(xi)
             alpha_previous = np.copy(alpha_next)
         # We return the squared vector to obtain a probability vector sum = 1
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
