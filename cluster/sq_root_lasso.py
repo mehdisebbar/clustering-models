@@ -102,6 +102,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         for _ in range(self.fista_iter):
             grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(xi, X, means, covars)
             alpha_next = proj_unit_disk(grad_step)
+            if np.isnan(alpha_next).any():
+                alpha_next = np.nan_to_num(alpha_next)
             t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
             alpha_previous = np.copy(alpha_next)
