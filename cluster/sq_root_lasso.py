@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from functools import partial
+
 import numpy as np
 from scipy.stats import multivariate_normal
 from sklearn.base import BaseEstimator
 from sklearn.mixture import GMM
 
 import apgpy as apg
+from grad_descent_algs import nmapg_linesearch
 from tools.algorithms_benchmark import view2Ddata
 from tools.gm_tools import gm_params_generator, gaussian_mixture_sample, covar_estim, score, tau_estim
+from tools.math import proj_unit_disk
 from tools.matrix_tools import check_zero_matrix
 
 
@@ -74,6 +78,14 @@ class sqrt_lasso_gmm(BaseEstimator):
         # return len(self.weights_) * len(self.means_[0]) ** 2 + self.N * len(self.means_) + len(self.weights_)
         return len(self.weights_)
 
+    def nmapg_linesearch_weights_estim(self, X, means, covars, pi):
+        grad_f = partial(self.grad_sqrt_penalty, X=X, means=means, covars=covars)
+        F = partial(self.f, X=X, means=means, covars=covars)
+        w = np.copy(np.sqrt(pi[:-1]))
+        res = nmapg_linesearch(w, F=F, g=proj_unit_disk, grad_f=grad_f, eta=0.8, delta=1e-5, rho=0.8)
+        return np.append(res ** 2, max(0, 1 - np.linalg.norm(res) ** 2))
+
+
     def pi_sqrt_lasso_reduced_estim_fista(self, X, means, covars, pi):
         """
         lasso with square root of pi estimation
@@ -88,8 +100,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         # we took ||pi_hat-pi_star||**2 = len(pi)**2
         # fista_iter = int(np.sqrt(2*len(pi)**2 * self.L) // 1)
         for _ in range(self.fista_iter):
-            grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(X, means, covars, xi)
-            alpha_next = self.proj_unit_disk(grad_step)
+            grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(xi, X, means, covars)
+            alpha_next = proj_unit_disk(grad_step)
             t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
             alpha_previous = np.copy(alpha_next)
@@ -122,7 +134,8 @@ class sqrt_lasso_gmm(BaseEstimator):
                 print "x_next", x_next
                 print "x_previous", x_previous
                 return 0
-            z_next = self.proj_unit_disk(y_next - alpha_y * self.grad_sqrt_penalty(X, means, covars, y_next))
+            z_next = self.proj_unit_disk(
+                y_next - alpha_y * self.grad_sqrt_penalty(X, means, covars, y_next))  # WOOOOOT TO CHECK
             x_previous = np.copy(x_next)
             if self.f(X, means, covars, z_next) <= (c_next - delta * np.linalg.norm(z_next - y_next) ** 2):
                 x_next = z_next
@@ -136,7 +149,7 @@ class sqrt_lasso_gmm(BaseEstimator):
             c_next = (eta * q_previous * c_next + self.f(X, means, covars, x_next)) / q_next
         return np.append(x_next ** 2, max(0, 1 - np.linalg.norm(x_next) ** 2))
 
-    def f(self, X, means, covars, alpha):
+    def f(self, alpha, X=None, means=None, covars=None):
         """
         evaluate penalized loglikelihood for a given pi
         used in nmapg_pi_estim
@@ -151,7 +164,8 @@ class sqrt_lasso_gmm(BaseEstimator):
                 np.log((alpha ** 2 * dens_witht_p_comp).sum(axis=1) + dens_last_comp.reshape(
                     X.shape[0]))).sum() + self.lambd * (alpha.sum())
         except:
-            pass
+            print "error in evaluating the F"
+            print alpha
         return res
 
     def grad_sqrt_penalty(self, alpha, X=None, means=None, covars=None):
@@ -171,16 +185,6 @@ class sqrt_lasso_gmm(BaseEstimator):
         den = (self.EPSILON + dens_last_comp + ((alpha ** 2) * dens_with_p_comp).sum(axis=1)).reshape(X.shape[0], 1)
         return self.lambd - 1. / X.shape[0] * (num / den).sum(axis=0)
 
-    @staticmethod
-    def proj_unit_disk(v, t=None):
-        """
-        we receive a vector [v1,v2,...,vp] and project [v1,v2,...,vp-1] on the unit disk.
-        """
-        if np.linalg.norm(v) ** 2 <= 1:
-            return v
-        else:
-            return v / np.linalg.norm(v)
-
     def score(self, X, y=None):
         """
         Loglikelihood of the model on the dataset X
@@ -194,14 +198,14 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 3, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
+    pi, means, covars = gm_params_generator(2, 4, min_center_dist=0.1)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
     view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 6
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 10
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=200, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
+    max_clusters = 7
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
+    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
     print "real pi: ", pi
     cl.fit(X)

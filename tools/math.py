@@ -1,6 +1,7 @@
 import numpy as np
 from cvxpy import *
 from scipy.stats import multivariate_normal
+from scipy.stats import threshold
 
 def simplex_proj(v):
     """
@@ -63,3 +64,14 @@ def covar(X, mean, tau, pi):
     N = len(X)
     Z = np.sqrt(tau).reshape(N, 1) * (X - mean)
     return 1 / (pi * N) * Z.T.dot(Z)
+
+
+def proj_unit_disk(w, t=None):
+    """
+    we receive a vector [v1,v2,...,vp] and project [v1,v2,...,vp-1] on the positive unit disk.
+    """
+    v = threshold(w, threshmin=0, newval=0)
+    if np.linalg.norm(v) ** 2 <= 1:
+        return v
+    else:
+        return v / np.linalg.norm(v)

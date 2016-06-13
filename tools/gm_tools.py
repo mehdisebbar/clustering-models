@@ -67,13 +67,14 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     return Z[:, range(space_dimension)], Z[:, space_dimension]
 
 
-def gm_params_generator(d, k, sparse_proba=None, alpha = 5):
+def gm_params_generator(d, k, sparse_proba=None, alpha=5, min_center_dist=None):
     """
     We generate centers in [-0.5, 0.5] and verify that they are separated enough
     alpha is the size of the grid
     """
     #  we scatter the unit square on k squares, the min distance is given by alpha/sqrt(k)
-    min_center_dist = alpha/np.sqrt(k)
+    if min_center_dist == None:
+        min_center_dist = alpha / np.sqrt(k)
     centers = [alpha*(np.random.rand(1, d)[0]-0.5)]
     for i in range(k-1):
         center = alpha*(np.random.rand(1, d)[0]-0.5)
