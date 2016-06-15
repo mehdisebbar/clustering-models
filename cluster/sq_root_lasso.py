@@ -175,7 +175,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         density is of dim p-1
         Evaluate the gradient of
         """
-        if X == None:
+        if np.any(X) == None:
             X, means, covars = self.X, self.means_, self.covars_
         dens_last_comp = multivariate_normal.pdf(X, means[len(alpha)], covars[len(alpha)])
         dens_with_p_comp = np.array(
