@@ -36,7 +36,7 @@ for data_size in data_size_list:
     for cluster_size in cluster_size_list:
         for dim in dim_list:
             try:
-                pi, means, covars = gm_params_generator(dim, cluster_size)
+                pi, means, covars = gm_params_generator(dim, cluster_size, min_center_dist=0.1)
                 # pi = np.array([0.2 , 0.4, 0.4])
                 # means = np.array( [[0,0],[2,2],[2,0]])
                 X, _ = gaussian_mixture_sample(pi, means, covars, data_size)
