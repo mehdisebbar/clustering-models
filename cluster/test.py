@@ -22,13 +22,14 @@ def weights_compare(pi1, pi2):
         return ((np.array(pi1+[0]*(len(pi2)-len(pi1)))-np.array(pi2))**2).sum()
     else:
         return ((np.array(pi2+[0]*(len(pi1)-len(pi2)))-np.array(pi1))**2).sum()
+
 #we define a bic scoring method for the grid search
 def bic_scorer(estimator, X, y=None):
     return (2*score(X, estimator.weights_, estimator.means_, estimator.covars_ ) -
             estimator._n_parameters()*np.log(X.shape[0]))
 
-for data_size in [5e3, 1e4, 2e4, 4e4, 8e4, 1e5]:
-    pi, means, covars = gm_params_generator(2,4)
+for data_size in [4e5]:
+    pi, means, covars = gm_params_generator(5,6)
     #pi = np.array([0.2 , 0.4, 0.4])
     #means = np.array( [[0,0],[2,2],[2,0]])
     X,_ = gaussian_mixture_sample(pi, means, covars, data_size)
@@ -39,10 +40,10 @@ for data_size in [5e3, 1e4, 2e4, 4e4, 8e4, 1e5]:
         X, np.zeros(len(X)), test_size=test_size, random_state=0)
     
     #grid search on sq_root_lasso method
-    max_clusters = 8
+    max_clusters = 10
     lambd = np.sqrt(2*np.log(max_clusters)/X_train.shape[0])
-    param = {"lambd":[lambd, lambd*1e1, lambd*1e2, lambd*1e3, lambd*1e4], "lipz_c":[1, 1e1, 1e2, 1e3], "max_clusters":[max_clusters]}
-    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=100), param_grid=param, cv=5, n_jobs=-1, scoring=bic_scorer)
+    param = {"lambd":[lambd, lambd*1e1], "lipz_c":[1, 1e-1, 10], "max_clusters":[max_clusters]}
+    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=100, verbose=True), param_grid=param, cv=5, n_jobs=-1, scoring=bic_scorer)
     clf.fit(X_train, y_train)
     
     
