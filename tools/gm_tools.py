@@ -50,7 +50,7 @@ def gaussian_mixture_sample(pi, centers, sigmas, N):
     nb_of_clusters = len(pi)
     space_dimension = len(centers[0])
     sample_repartition_among_clusters = multinomial(N, pi, size=1)[0]
-    Z = np.zeros([N, space_dimension + 1])
+    Z = np.zeros([int(N), int(space_dimension + 1)])
     labels = []
     for i in range(nb_of_clusters):
         labels += [i for _ in range(sample_repartition_among_clusters[i])]
