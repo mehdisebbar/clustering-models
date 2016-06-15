@@ -131,4 +131,5 @@ for data_size in data_size_list:
             except:
                 print "error on calc of: ", " data_size: ", str(data_size), " cluster_size: ", str(
                     cluster_size), " dim: ", str(dim)
+                print "Unexpected error:", sys.exc_info()[0]
                 pass
