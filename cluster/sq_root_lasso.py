@@ -48,6 +48,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.X = X
         K = len(self.weights_)
         for it in range(self.n_iter):
+            if len(self.weights_) == 1:
+                return self
             # We estimate pi according to the penalities lambdas given
             self.means_ = clean_nans(self.means_)
             self.weights_ = clean_nans(self.weights_)
@@ -183,7 +185,10 @@ class sqrt_lasso_gmm(BaseEstimator):
         # We reshape for the division and add EPSILON to avoid zero division
         # we add the lambda penality
         num = 2 * alpha * dens_with_p_comp
-        den = (self.EPSILON + dens_last_comp + ((alpha ** 2) * dens_with_p_comp).sum(axis=1)).reshape(X.shape[0], 1)
+        try:
+            den = (self.EPSILON + dens_last_comp + ((alpha ** 2) * dens_with_p_comp).sum(axis=1)).reshape(X.shape[0], 1)
+        except:
+            raise
         return self.lambd - 1. / X.shape[0] * (num / den).sum(axis=0)
 
     def score(self, X, y=None):
@@ -200,11 +205,11 @@ if __name__ == '__main__':
     a test
     """
     pi, means, covars = gm_params_generator(2, 4, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1250)
     view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 7
+    max_clusters = 8
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
     cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
