@@ -132,6 +132,7 @@ for data_size in data_size_list:
                                  }
 
                              }, open("res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size), "wb"))
+                print "Done for ", "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size)
             except:
                 print "error on calc of: ", " data_size: ", str(data_size), " cluster_size: ", str(
                     cluster_size), " dim: ", str(dim)
