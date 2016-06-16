@@ -10,14 +10,13 @@ from sklearn.mixture import GMM
 
 import apgpy as apg
 from grad_descent_algs import nmapg_linesearch
-from tools.algorithms_benchmark import view2Ddata
 from tools.gm_tools import gm_params_generator, gaussian_mixture_sample, covar_estim, score, tau_estim
 from tools.math import proj_unit_disk
 from tools.matrix_tools import check_zero_matrix, clean_nans
 
 
 class sqrt_lasso_gmm(BaseEstimator):
-    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=200, max_clusters=8, verbose=False):
+    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=300, max_clusters=8, verbose=False):
         self.max_clusters = max_clusters
         self.n_iter = n_iter
         self.lambd = lambd
@@ -204,12 +203,12 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 4, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1250)
-    view2Ddata(X)
+    pi, means, covars = gm_params_generator(5, 6, min_center_dist=0.1)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e5)
+    # view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 8
+    max_clusters = 10
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
     cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
