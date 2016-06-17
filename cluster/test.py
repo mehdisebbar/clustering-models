@@ -11,9 +11,9 @@ from sklearn.mixture import GMM
 import pickle
 import uuid
 
-data_size_list = [1e3, 5 * 1e3, 1e4, 5 * 1e4, 1e5]
-cluster_size_list = [3, 5, 8]
-dim_list = [2, 4, 6, 10]
+data_size_list = np.array([np.array(range(1, 10))*i for i in [1e4]]).flatten()
+cluster_size_list = [3]
+dim_list = [2]
 max_cluster_increment = 4
 
 def getkey(item):
@@ -40,26 +40,25 @@ def bic_scorer(estimator, X, y=None):
 for data_size in data_size_list:
     for cluster_size in cluster_size_list:
         for dim in dim_list:
-            for _ in range(5):
+            for _ in range(10):
                 try:
                     print "+++++++++++++"
-                    pi, means, covars = gm_params_generator(dim, cluster_size, min_center_dist=0.1)
+                    pi, means, covars = gm_params_generator(dim, cluster_size)
                     X, _ = gaussian_mixture_sample(pi, means, covars, data_size)
-                    test_size = 0.2
+                    test_size = 0.3
                     X_train, X_validation, y_train, y_test = train_test_split(
                         X, np.zeros(len(X)), test_size=test_size, random_state=0)
 
                     # grid search on sq_root_lasso method
                     max_clusters = cluster_size + max_cluster_increment
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
-                    param = {"lambd": [lambd * 1e-1, lambd, lambd * 1e1], "lipz_c": [1, 1e-1, 5],
-                             "max_clusters": [max_clusters]}
-                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=60), param_grid=param, cv=3, n_jobs=1,
+                    param = {"lambd": [lambd*1e-2, 5*lambd * 1e-2, lambd * 1e-1]}
+                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=60, max_clusters=max_clusters,verbose=True), param_grid=param, cv=3, n_jobs=-1,
                                        scoring=bic_scorer)
                     clf.fit(X_train, y_train)
 
                     params_GMM = {"n_components": range(2, max_clusters + 1)}
-                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
+                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=-1,
                                            scoring=bic_scorer)
                     clf_gmm.fit(X_train)
 
