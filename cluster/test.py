@@ -45,14 +45,14 @@ for data_size in data_size_list:
                     print "+++++++++++++"
                     pi, means, covars = gm_params_generator(dim, cluster_size)
                     X, _ = gaussian_mixture_sample(pi, means, covars, data_size)
-                    test_size = 0.3
+                    test_size = 0.2
                     X_train, X_validation, y_train, y_test = train_test_split(
                         X, np.zeros(len(X)), test_size=test_size, random_state=0)
 
                     # grid search on sq_root_lasso method
                     max_clusters = cluster_size + max_cluster_increment
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
-                    param = {"lambd": [lambd*1e-2, 5*lambd * 1e-2, lambd * 1e-1]}
+                    param = {"lambd": [lambd * 1e-2, 5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, 1]}
                     clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=60, max_clusters=max_clusters,verbose=True), param_grid=param, cv=3, n_jobs=-1,
                                        scoring=bic_scorer)
                     clf.fit(X_train, y_train)

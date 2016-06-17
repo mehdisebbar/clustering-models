@@ -17,7 +17,7 @@ from tools.matrix_tools import check_zero_matrix, clean_nans
 
 
 class sqrt_lasso_gmm(BaseEstimator):
-    def __init__(self, lambd=1, lipz_c=1, n_iter=100, fista_iter=300, max_clusters=8, verbose=False):
+    def __init__(self, lambd=1, lipz_c=1, n_iter=200, fista_iter=300, max_clusters=8, verbose=False):
         self.max_clusters = max_clusters
         self.n_iter = n_iter
         self.lambd = lambd
