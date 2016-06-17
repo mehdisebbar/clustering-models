@@ -1,7 +1,12 @@
+import sys
+
 import numpy as np
 from cvxpy import *
 from scipy.stats import multivariate_normal
 from scipy.stats import threshold
+
+from gm_tools import score
+
 
 def simplex_proj(v):
     """
@@ -75,3 +80,13 @@ def proj_unit_disk(w, t=None):
         return v
     else:
         return v / np.linalg.norm(v)
+
+
+def bic_scorer(estimator, X, y=None):
+    # we define a bic scoring method for the grid search
+    try:
+        return (2 * score(X, estimator.weights_, estimator.means_, estimator.covars_) -
+                estimator._n_parameters() * np.log(X.shape[0]))
+    except:
+        print "Unexpected scoring error:", sys.exc_info()[0]
+        return -9 * 1e5
