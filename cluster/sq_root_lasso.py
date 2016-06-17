@@ -11,6 +11,7 @@ from sklearn.mixture import GMM
 import apgpy as apg
 from grad_descent_algs import nmapg_linesearch
 from tools.gm_tools import gm_params_generator, gaussian_mixture_sample, covar_estim, score, tau_estim
+from tools.math import bic_scorer
 from tools.math import proj_unit_disk
 from tools.matrix_tools import check_zero_matrix, clean_nans
 
@@ -23,7 +24,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.lipz_c = lipz_c
         self.verbose = verbose
         self.fista_iter = fista_iter
-        self.eps_stop = 1e-7
+        self.eps_stop = 1e-100
+        self.max_iter = 100
 
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
@@ -49,7 +51,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         K = len(self.weights_)
         self.weights__prev = []
         it = 0
-        while not self.stopping_crit(self.weights_, self.weights__prev, self.eps_stop):
+        while not self.stopping_crit(self.weights_, self.weights__prev, self.eps_stop) and it < self.max_iter:
             if len(self.weights_) == 1:
                 return self
             # We estimate pi according to the penalities lambdas given
@@ -209,17 +211,18 @@ class sqrt_lasso_gmm(BaseEstimator):
             axis=1)).sum(axis=0)
 
 
+
 if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 3, min_center_dist=0.1)
+    pi, means, covars = gm_params_generator(2, 8, min_center_dist=0)
     X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
     # view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 5
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
+    max_clusters = 20
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 5e-2
     cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
     print "real pi: ", pi
@@ -227,6 +230,15 @@ if __name__ == '__main__':
     print "estimated pi: ", cl.weights_
     print "real means", means
     print "estimated means", cl.means_
-    print "score: ", cl.score(X)
-    print "score L*: ", score(X, pi, means, covars)
+    print "score: ", score(X, cl.weights_, cl.means_, cl.covars_) / X.shape[0]
+    print "score L*: ", score(X, pi, means, covars) / X.shape[0]
     print cl._n_parameters()
+    params_GMM = {"n_components": range(2, max_clusters + 1)}
+    from sklearn.grid_search import GridSearchCV
+
+    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
+                           scoring=bic_scorer, error_score=-1e4)
+    clf_gmm.fit(X)
+    print "gmm:", clf_gmm.best_estimator_.weights_
+    print "score gmm: ", score(X, clf_gmm.best_estimator_.weights_, clf_gmm.best_estimator_.means_,
+                               clf_gmm.best_estimator_.covars_) / X.shape[0]
