@@ -23,6 +23,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.lipz_c = lipz_c
         self.verbose = verbose
         self.fista_iter = fista_iter
+        self.eps_stop = 1e-7
 
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
@@ -38,7 +39,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         # initialization of the algorithm
         self.EPSILON = 1e-10
-        g = GMM(n_components=self.max_clusters, covariance_type="full")
+        g = GMM(n_components=self.max_clusters, covariance_type="diag")
         g.fit(X)
         self.means_, self.covars_, self.weights_ = g.means_, g.covars_, g.weights_
         if self.verbose:
@@ -46,12 +47,15 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.N = len(X)
         self.X = X
         K = len(self.weights_)
-        for it in range(self.n_iter):
+        self.weights__prev = []
+        it = 0
+        while not self.stopping_crit(self.weights_, self.weights__prev, self.eps_stop):
             if len(self.weights_) == 1:
                 return self
             # We estimate pi according to the penalities lambdas given
             self.means_ = clean_nans(self.means_)
             self.weights_ = clean_nans(self.weights_)
+            self.weights__prev = self.weights_
             self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
             non_zero_elements = np.nonzero(self.weights_)[0]
@@ -74,8 +78,14 @@ class sqrt_lasso_gmm(BaseEstimator):
             K = len(self.weights_)
             if self.verbose and it % 10 == 0:
                 print "iteration", it, " lambda:", self.lambd, " L: ", self.lipz_c, " pi: ", self.weights_
+            it += 1
         # Only for the bic scorer in cross_validation
         return self
+
+    def stopping_crit(self, x, x_prev, eps):
+        if len(x) == len(x_prev):
+            return np.linalg.norm(np.array(x) - np.array(x_prev)) < eps
+        return False
 
     def _n_parameters(self):
         # return len(self.weights_) * len(self.means_[0]) ** 2 + self.N * len(self.means_) + len(self.weights_)
@@ -203,12 +213,12 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(5, 6, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e5)
+    pi, means, covars = gm_params_generator(2, 3, min_center_dist=0.1)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
     # view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 10
+    max_clusters = 5
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
     cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
