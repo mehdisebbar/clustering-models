@@ -54,7 +54,7 @@ for data_size in data_size_list:
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
                     param = {"lambd": [lambd * 1e-2, 5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, 1]}
                     clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=60, max_clusters=max_clusters,verbose=True), param_grid=param, cv=3, n_jobs=-1,
-                                       scoring=bic_scorer)
+                                       scoring=bic_scorer, error_score=-1e10)
                     clf.fit(X_train, y_train)
 
                     params_GMM = {"n_components": range(2, max_clusters + 1)}
