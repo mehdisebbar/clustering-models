@@ -24,8 +24,8 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.lipz_c = lipz_c
         self.verbose = verbose
         self.fista_iter = fista_iter
-        self.eps_stop = 1e-100
-        self.max_iter = 100
+        self.eps_stop = 1e-20
+        self.max_iter = n_iter
 
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
@@ -49,15 +49,15 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.N = len(X)
         self.X = X
         K = len(self.weights_)
-        self.weights__prev = []
+        self.means_prev_ = []
         it = 0
-        while not self.stopping_crit(self.weights_, self.weights__prev, self.eps_stop) and it < self.max_iter:
+        while not self.stopping_crit(self.means_, self.means_prev_, self.eps_stop) and it < self.max_iter:
             if len(self.weights_) == 1:
                 return self
             # We estimate pi according to the penalities lambdas given
             self.means_ = clean_nans(self.means_)
             self.weights_ = clean_nans(self.weights_)
-            self.weights__prev = self.weights_
+            self.means_prev_ = self.means_
             self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X, self.means_, self.covars_, self.weights_)
             # we remove the clusters with probability = 0
             non_zero_elements = np.nonzero(self.weights_)[0]
@@ -216,13 +216,13 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 8, min_center_dist=0)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
+    pi, means, covars = gm_params_generator(2, 5, min_center_dist=0.1)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
     # view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
     max_clusters = 20
-    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0]) * 5e-2
+    lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
     cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
     print lambd
     print "real pi: ", pi
