@@ -91,7 +91,9 @@ class sqrt_lasso_gmm(BaseEstimator):
 
     def _n_parameters(self):
         # return len(self.weights_) * len(self.means_[0]) ** 2 + self.N * len(self.means_) + len(self.weights_)
-        return len(self.weights_)
+        p = len(self.means_[0])
+        k = len(self.weights_)
+        return k + k * p + k * p ^ 2
 
     def nmapg_linesearch_weights_estim(self, X, means, covars, pi):
         grad_f = partial(self.grad_sqrt_penalty, X=X, means=means, covars=covars)
