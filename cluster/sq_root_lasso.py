@@ -118,7 +118,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         # we took ||pi_hat-pi_star||**2 = len(pi)**2
         # fista_iter = int(np.sqrt(2*len(pi)**2 * self.L) // 1)
         it = 0
-        while not (np.linalg.norm(alpha_next - alpha_previous)) < self.eps_stop and it < 500:
+        while not (np.linalg.norm(alpha_next - alpha_previous)) < self.eps_stop and it < 300:
             alpha_previous = np.copy(alpha_next)
             grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(xi, X, means, covars)
             alpha_next = proj_unit_disk(grad_step)
@@ -230,11 +230,13 @@ if __name__ == '__main__':
     # avec pi_i non ordonnés
     max_clusters = 9
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    param = {"lambd": [lambd * 1e-1, lambd]}
+
+    param = {"lambd": 1e-1 * lambd * np.array(range(1, 10))}
+
     clf = GridSearchCV(
-        estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True, lipz_c=1, fista_iter=400),
+        estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True, lipz_c=1),
         param_grid=param,
-        cv=2, n_jobs=1,
+        cv=3, n_jobs=1,
                        scoring=bic_scorer, error_score=-1e10)
     print lambd
     print "real pi: ", pi
