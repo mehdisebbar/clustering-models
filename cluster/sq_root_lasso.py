@@ -218,25 +218,30 @@ if __name__ == '__main__':
     """
     a test
     """
-    pi, means, covars = gm_params_generator(2, 5, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
+    from sklearn.grid_search import GridSearchCV
+
+    pi, means, covars = gm_params_generator(2, 5, min_center_dist=0)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
     # view2Ddata(X)
     # methode (square root) lasso
     # avec pi_i non ordonnés
-    max_clusters = 20
+    max_clusters = 9
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    cl = sqrt_lasso_gmm(max_clusters=max_clusters, n_iter=50, lipz_c=1, lambd=lambd, verbose=True, fista_iter=300)
+    param = {"lambd": [lambd * 1e-2, lambd * 1e-1, lambd]}
+    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True), param_grid=param,
+                       cv=3, n_jobs=1,
+                       scoring=bic_scorer, error_score=-1e10)
     print lambd
     print "real pi: ", pi
-    cl.fit(X)
-    print "estimated pi: ", cl.weights_
+    clf.fit(X)
+    print "estimated pi: ", clf.best_estimator_.weights_
     print "real means", means
-    print "estimated means", cl.means_
-    print "score: ", score(X, cl.weights_, cl.means_, cl.covars_) / X.shape[0]
+    print "estimated means", clf.best_estimator_.means_
+    print "score: ", score(X, clf.best_estimator_.weights_, clf.best_estimator_.means_, clf.best_estimator_.covars_) / \
+                     X.shape[0]
     print "score L*: ", score(X, pi, means, covars) / X.shape[0]
-    print cl._n_parameters()
+    print clf.best_estimator_._n_parameters()
     params_GMM = {"n_components": range(2, max_clusters + 1)}
-    from sklearn.grid_search import GridSearchCV
 
     clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
                            scoring=bic_scorer, error_score=-1e4)

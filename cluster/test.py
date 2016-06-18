@@ -10,6 +10,7 @@ from cluster.sq_root_lasso import sqrt_lasso_gmm
 from sklearn.mixture import GMM
 import pickle
 import uuid
+from datetime import datetime
 
 data_size_list = np.array([np.array(range(1, 10))*i for i in [1e4]]).flatten()
 cluster_size_list = [3]
@@ -30,6 +31,10 @@ def weights_compare(pi1, pi2):
 #we define a bic scoring method for the grid search
 def bic_scorer(estimator, X, y=None):
     try:
+        print "******"
+        print estimator.weights_
+        print "score: ", str((2 * score(X, estimator.weights_, estimator.means_,
+                                        estimator.covars_) - estimator._n_parameters() * np.log(X.shape[0])))
         return (2 * score(X, estimator.weights_, estimator.means_, estimator.covars_) -
             estimator._n_parameters()*np.log(X.shape[0]))
     except:
@@ -40,7 +45,7 @@ def bic_scorer(estimator, X, y=None):
 for data_size in data_size_list:
     for cluster_size in cluster_size_list:
         for dim in dim_list:
-            for _ in range(10):
+            for _ in range(5):
                 try:
                     print "+++++++++++++"
                     pi, means, covars = gm_params_generator(dim, cluster_size)
@@ -48,17 +53,20 @@ for data_size in data_size_list:
                     test_size = 0.2
                     X_train, X_validation, y_train, y_test = train_test_split(
                         X, np.zeros(len(X)), test_size=test_size, random_state=0)
+                    print "Real Weights: ", pi
 
                     # grid search on sq_root_lasso method
                     max_clusters = cluster_size + max_cluster_increment
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
-                    param = {"lambd": [lambd * 1e-2, 5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, 1]}
-                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=60, max_clusters=max_clusters,verbose=True), param_grid=param, cv=3, n_jobs=-1,
+                    param = {
+                        "lambd": [lambd * 1e-2, 5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, lambd, 5 * lambd]}
+                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True),
+                                       param_grid=param, cv=3, n_jobs=1,
                                        scoring=bic_scorer, error_score=-1e10)
                     clf.fit(X_train, y_train)
 
                     params_GMM = {"n_components": range(2, max_clusters + 1)}
-                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=-1,
+                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
                                            scoring=bic_scorer)
                     clf_gmm.fit(X_train)
 
@@ -131,7 +139,8 @@ for data_size in data_size_list:
                                      }
 
                                  }, open(
-                        "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size) + "_" + str(
+                        "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size) + "_" +
+                        str(datetime.now()).replace(" ", "_").split(".")[0] + str(
                             uuid.uuid4()), "wb"))
                     print "Done for ", "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size)
                 except:
