@@ -111,17 +111,20 @@ class sqrt_lasso_gmm(BaseEstimator):
         """
         t_previous = 1
         # we delete the last element and take the square root of the vector
-        alpha_previous = np.copy(np.sqrt(pi[:-1]))
-        xi = np.copy(alpha_previous)
+        alpha_next = np.copy(np.sqrt(pi[:-1]))
+        xi = np.copy(alpha_next)
+        alpha_previous = np.zeros(alpha_next.shape[0])
         # the number of iterations is given on FISTA paper,
         # we took ||pi_hat-pi_star||**2 = len(pi)**2
         # fista_iter = int(np.sqrt(2*len(pi)**2 * self.L) // 1)
-        for _ in range(self.fista_iter):
+        it = 0
+        while not (np.linalg.norm(alpha_next - alpha_previous)) < self.eps_stop and it < 500:
+            alpha_previous = np.copy(alpha_next)
             grad_step = xi - 1. / (np.sqrt(X.shape[0]) * self.lipz_c) * self.grad_sqrt_penalty(xi, X, means, covars)
             alpha_next = proj_unit_disk(grad_step)
             t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
-            alpha_previous = np.copy(alpha_next)
+            it += 1
         # We return the squared vector to obtain a probability vector sum = 1
         return np.append(alpha_next ** 2, max(0, 1 - np.linalg.norm(alpha_next) ** 2))
 
@@ -227,9 +230,11 @@ if __name__ == '__main__':
     # avec pi_i non ordonnés
     max_clusters = 9
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    param = {"lambd": [lambd * 1e-2, lambd * 1e-1, lambd]}
-    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True), param_grid=param,
-                       cv=3, n_jobs=1,
+    param = {"lambd": [lambd * 1e-1, lambd]}
+    clf = GridSearchCV(
+        estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True, lipz_c=1, fista_iter=400),
+        param_grid=param,
+        cv=2, n_jobs=1,
                        scoring=bic_scorer, error_score=-1e10)
     print lambd
     print "real pi: ", pi
