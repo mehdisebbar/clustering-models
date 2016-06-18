@@ -11,11 +11,15 @@ from sklearn.mixture import GMM
 import pickle
 import uuid
 from datetime import datetime
+import os
 
-data_size_list = np.array([np.array(range(1, 10))*i for i in [1e4]]).flatten()
+data_size_list = np.array([np.array(range(1, 10)) * i for i in [1e3]]).flatten()
 cluster_size_list = [3]
 dim_list = [2]
 max_cluster_increment = 4
+FOLDER = str(datetime.now()).split(".")[0].replace(" ", "_").replace(":", ".") + "/"
+print FOLDER
+os.makedirs(FOLDER)
 
 def getkey(item):
     return item[0]
@@ -59,14 +63,14 @@ for data_size in data_size_list:
                     max_clusters = cluster_size + max_cluster_increment
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
                     param = {
-                        "lambd": [lambd * 1e-2, 5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, lambd, 5 * lambd]}
+                        "lambd": [5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, lambd, 5 * lambd]}
                     clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True),
-                                       param_grid=param, cv=3, n_jobs=1,
+                                       param_grid=param, cv=3, n_jobs=-1,
                                        scoring=bic_scorer, error_score=-1e10)
                     clf.fit(X_train, y_train)
 
                     params_GMM = {"n_components": range(2, max_clusters + 1)}
-                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
+                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=-1,
                                            scoring=bic_scorer)
                     clf_gmm.fit(X_train)
 
@@ -138,9 +142,9 @@ for data_size in data_size_list:
                                          "covars": covars_gmm
                                      }
 
-                                 }, open(
-                        "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size) + "_" +
-                        str(datetime.now()).replace(" ", "_").split(".")[0] + str(
+                                 }, open(FOLDER +
+                                         "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(
+                        data_size) + "_" + str(
                             uuid.uuid4()), "wb"))
                     print "Done for ", "res_" + "D" + str(dim) + "K" + str(cluster_size) + "N" + str(data_size)
                 except:
