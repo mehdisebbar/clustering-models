@@ -1,6 +1,8 @@
 import numpy as np
+from numba import jit
 
 
+@jit()
 def nmapg_linesearch(x, grad_f, g, F, eta=0.1, delta=1e-5, rho=0.1):
     """
     Implementation of nm_apg with linesearch for specific case, g is projector

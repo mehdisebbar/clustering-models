@@ -12,11 +12,13 @@ import pickle
 import uuid
 from datetime import datetime
 import os
+from tools.matrix_tools import weights_compare
 
-data_size_list = np.array([np.array(range(1, 10)) * i for i in [1e3]]).flatten()
-cluster_size_list = [3]
-dim_list = [2]
-max_cluster_increment = 4
+verbose = False
+data_size_list = np.array([1e3, 5 * 1e3, 1e4, 5 * 1e4, 1e5])
+cluster_size_list = [20]
+dim_list = [10]
+max_cluster_increment = 20
 FOLDER = str(datetime.now()).split(".")[0].replace(" ", "_").replace(":", ".") + "/"
 print FOLDER
 os.makedirs(FOLDER)
@@ -24,21 +26,10 @@ os.makedirs(FOLDER)
 def getkey(item):
     return item[0]
 
-def weights_compare(pi1, pi2):
-    if len(pi1) == len(pi2):
-        return ((np.array(pi1)-np.array(pi2))**2).sum()
-    elif len(pi1) < len(pi2):
-        return ((np.array(pi1+[0]*(len(pi2)-len(pi1)))-np.array(pi2))**2).sum()
-    else:
-        return ((np.array(pi2+[0]*(len(pi1)-len(pi2)))-np.array(pi1))**2).sum()
 
 #we define a bic scoring method for the grid search
 def bic_scorer(estimator, X, y=None):
     try:
-        print "******"
-        print estimator.weights_
-        print "score: ", str((2 * score(X, estimator.weights_, estimator.means_,
-                                        estimator.covars_) - estimator._n_parameters() * np.log(X.shape[0])))
         return (2 * score(X, estimator.weights_, estimator.means_, estimator.covars_) -
             estimator._n_parameters()*np.log(X.shape[0]))
     except:
@@ -63,14 +54,15 @@ for data_size in data_size_list:
                     max_clusters = cluster_size + max_cluster_increment
                     lambd = np.sqrt(2 * np.log(max_clusters) / X_train.shape[0])
                     param = {
-                        "lambd": [5 * lambd * 1e-2, lambd * 1e-1, 5 * lambd * 1e-1, lambd, 5 * lambd]}
-                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=True),
-                                       param_grid=param, cv=3, n_jobs=-1,
-                                       scoring=bic_scorer, error_score=-1e10)
+                        "lambd": [lambd * 1e-1, 5 * lambd * 1e-1, lambd, 5 * lambd, 10 * lambd],
+                        "lipz_c": [0.1, 1, 10, 50]}
+                    clf = GridSearchCV(estimator=sqrt_lasso_gmm(n_iter=200, max_clusters=max_clusters, verbose=verbose),
+                                       param_grid=param, cv=3, n_jobs=1,
+                                       scoring=bic_scorer, error_score=-1e20, verbose=4)
                     clf.fit(X_train, y_train)
 
                     params_GMM = {"n_components": range(2, max_clusters + 1)}
-                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=-1,
+                    clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
                                            scoring=bic_scorer)
                     clf_gmm.fit(X_train)
 
@@ -96,7 +88,7 @@ for data_size in data_size_list:
                     # print "sq_root lasso method loglikelihood on X_validation:", liklhd_sqrt
                     #print "likelihood_diff: ", liklhd_r - liklhd_sqrt, "\n"
 
-                    # print "sorted pi: ", np.array(weights_sqrt)
+                    #print "sorted pi: ", np.array(weights_sqrt)
                     # print "sorted means: ", np.array(means_sqrt), "\n"
                     print "norm(weights_sqrt-weights_real) :", weights_compare(weights_sqrt, weights_s)
 
@@ -152,3 +144,4 @@ for data_size in data_size_list:
                         cluster_size), " dim: ", str(dim)
                     print "Unexpected error:", sys.exc_info()[0]
                     pass
+print "Done for " + FOLDER

@@ -22,3 +22,12 @@ def clean_nans(x):
         return np.nan_to_num(x)
     else:
         return x
+
+
+def weights_compare(pi1, pi2):
+    if len(pi1) == len(pi2):
+        return ((np.array(pi1) - np.array(pi2)) ** 2).sum()
+    elif len(pi1) < len(pi2):
+        return ((np.array(pi1 + [0] * (len(pi2) - len(pi1))) - np.array(pi2)) ** 2).sum()
+    else:
+        return ((np.array(pi2 + [0] * (len(pi1) - len(pi2))) - np.array(pi1)) ** 2).sum()

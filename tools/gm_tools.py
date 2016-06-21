@@ -7,6 +7,7 @@ from scipy import random
 from sklearn.cross_validation import train_test_split
 from sklearn.datasets import make_sparse_spd_matrix
 
+EPSILON = 1e-100
 
 class DatasetGenTool(object):
     """
@@ -189,7 +190,7 @@ def tau_estim(X, centers, covars, pi):
     try:
         densities = np.array(
             [multivariate_normal.pdf(X, centers[k], covars[k], allow_singular=True) for k in range(len(pi))]).T * pi
-        return (densities.T / (densities.sum(axis=1))).T
+        return (densities.T / (EPSILON + densities.sum(axis=1))).T
     except np.linalg.LinAlgError as e:
         print "Error on density computation for tau", e
 
@@ -213,5 +214,5 @@ def score(X, weights, means, covars):
     Loglikelihood of the GM model with param (weights, centers, covars) on the dataset X
     """
     from scipy.stats import multivariate_normal
-    return np.log((np.array([multivariate_normal.pdf(
+    return np.log(EPSILON + (np.array([multivariate_normal.pdf(
         X, means[i], covars[i]) for i in range(len(weights))]).T * weights).sum(axis=1)).sum(axis=0)

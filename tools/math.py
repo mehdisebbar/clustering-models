@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 from cvxpy import *
+from numba import jit
 from scipy.stats import multivariate_normal
 from scipy.stats import threshold
 
@@ -71,6 +72,7 @@ def covar(X, mean, tau, pi):
     return 1 / (pi * N) * Z.T.dot(Z)
 
 
+@jit()
 def proj_unit_disk(w, t=None):
     """
     we receive a vector [v1,v2,...,vp] and project [v1,v2,...,vp-1] on the positive unit disk.
@@ -90,3 +92,21 @@ def bic_scorer(estimator, X, y=None):
     except:
         print "Unexpected scoring error:", sys.exc_info()[0]
         return -9 * 1e5
+
+
+@jit()
+def lp_ball_proj_pos_orthant(y, p=2):
+    """
+    Projection on Lp unit ball for any dim,
+    We could use a newton method for this problem for p>2, here we have any p
+    :param y: vector to project
+    :param p: dimension
+    :return: projection on the Lp unit ball
+    """
+    # proj on positive orthants
+    y_t = threshold(y, threshmin=0, newval=0)
+    w = Variable(y_t.shape[0])
+    pb = Problem(Minimize(norm(y_t - w)),
+                 [sum_entries(w ** p) <= 1])
+    pb.solve()
+    return np.array(w.value).T[0]
