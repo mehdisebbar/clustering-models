@@ -32,6 +32,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         self.max_iter = n_iter
         self.pen_power = pen_power
 
+
     def get_params(self, deep=True):
         return {"max_clusters": self.max_clusters,
                 "n_iter": self.n_iter,
@@ -61,10 +62,11 @@ class sqrt_lasso_gmm(BaseEstimator):
             self.means_ = clean_nans(self.means_)
             self.weights_ = clean_nans(self.weights_)
             self.means_prev_ = self.means_
-            self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X,
-                                                                   self.means_, self.covars_, self.weights_
-                                                                   , self.fista_iter, self.eps_stop,
-                                                                   self.pen_power, self.lipz_c)
+            # self.weights_ = self.pi_sqrt_lasso_reduced_estim_fista(X,
+            #                                                       self.means_, self.covars_, self.weights_
+            #                                                       , self.fista_iter, self.eps_stop,
+            #                                                       self.pen_power, self.lipz_c)
+            self.weights_ = self.fista_backt(X, self.weights_)
             # we remove the clusters with probability = 0
             self.weights_ = threshold(self.weights_, threshmin=1e-40, newval=0)
             non_zero_elements = np.nonzero(self.weights_)[0]
@@ -102,6 +104,49 @@ class sqrt_lasso_gmm(BaseEstimator):
         k = len(self.weights_)
         return k + k * p + k * p ^ 2
 
+    @jit()
+    def fista_backt(self, X, pi, L=1e-4, eta=1.5):
+        """
+        fista avec backtracking
+        uniquement pour puissance 2
+        :param X:
+        :param pi:
+        :param grad_f:
+        :param g:
+        :param F:
+        :param L:
+        :param eta:
+        :return:
+        """
+        it = 0
+        t_previous = 1
+        t_next = 1
+        alpha_next = np.copy(np.sqrt(pi[:-1]))
+        alpha_previous = np.zeros(alpha_next.shape[0])
+        xi = np.copy(alpha_next)
+        while not (np.linalg.norm(alpha_next - alpha_previous)) < self.eps_stop and it < self.fista_iter:
+
+            pl = proj_unit_disk(xi - 1. / (np.sqrt(X.shape[0]) * L) *
+                                self.grad_sqrt_penalty(xi, X, self.means_, self.covars_, 2))
+            ql = self.f_pi_pen(xi, X, self.means_, self.covars_) + \
+                 np.dot((pl - xi).T, self.grad_sqrt_penalty(xi, X, self.means_, self.covars_, self.pen_power)) + \
+                 L / 2 * np.linalg.norm(xi - pl) ** 2
+            while self.f_pi_pen(pl, X, self.means_, self.covars_) > ql:
+                L = L * eta
+                pl = proj_unit_disk(xi - 1. / (np.sqrt(X.shape[0]) * L) *
+                                    self.grad_sqrt_penalty(xi, X, self.means_, self.covars_, 2))
+                ql = self.f_pi_pen(xi, X, self.means_, self.covars_) + \
+                     np.dot((pl - xi).T, self.grad_sqrt_penalty(xi, X, self.means_, self.covars_, self.pen_power)) + \
+                     L / 2 * np.linalg.norm(xi - pl) ** 2
+
+            alpha_next, alpha_previous = proj_unit_disk(xi - 1. / (np.sqrt(X.shape[0]) * L) *
+                                                        self.grad_sqrt_penalty(xi, X, self.means_, self.covars_,
+                                                                               2)), alpha_next
+            t_next, t_previous = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2, t_next
+            xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
+            it += 1
+        return np.append(alpha_next ** self.pen_power, max(0, 1 - (alpha_next ** self.pen_power).sum()))
+
     def nmapg_linesearch_weights_estim(self, X, means, covars, pi):
         grad_f = partial(self.grad_sqrt_penalty, X=X, means=means, covars=covars)
         F = partial(self.f_pi_pen, X=X, means=means, covars=covars)
@@ -117,6 +162,7 @@ class sqrt_lasso_gmm(BaseEstimator):
         we project the next step (squared) of the gradient descent on the unit circle
         """
         t_previous = 1
+        t_next = 1
         # we delete the last element and take the square root of the vector
         alpha_next = np.copy(np.sqrt(pi[:-1]))
         xi = np.copy(alpha_next)
@@ -130,7 +176,7 @@ class sqrt_lasso_gmm(BaseEstimator):
             grad_step = xi - 1. / (np.sqrt(X.shape[0]) * lipz_c) * self.grad_sqrt_penalty(xi, X, means, covars,
                                                                                           pen_power)
             alpha_next = proj_unit_disk(grad_step)
-            t_next = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2
+            t_next, t_previous = (1. + np.sqrt(1 + 4 * t_previous ** 2)) / 2, t_next
             xi = alpha_next + (t_previous - 1) / t_next * (alpha_next - alpha_previous)
             it += 1
         # We return the squared vector to obtain a probability vector sum = 1
@@ -191,13 +237,9 @@ class sqrt_lasso_gmm(BaseEstimator):
         dens_witht_p_comp = np.array(d).T
         # We reshape for the division and add EPSILON to avoid zero division
         # we add the lambda penalit
-        try:
-            res = - 1. / X.shape[0] * (
+        res = - 1. / X.shape[0] * (
                 np.log((alpha ** gamma * dens_witht_p_comp).sum(axis=1) + dens_last_comp.reshape(
-                    X.shape[0]))).sum() + lambd * (alpha.sum())
-        except:
-            print "error in evaluating the F"
-            print alpha
+                    X.shape[0]))).sum() + self.lambd * (alpha.sum())
         return res
 
     @jit()
@@ -283,23 +325,33 @@ def main_timing():
 
 def basic_main():
     # from test import weights_compare
+    from time import time
 
-    pi, means, covars = gm_params_generator(20, 20, min_center_dist=0.1)
-    X, _ = gaussian_mixture_sample(pi, means, covars, 1e4)
-    max_clusters = 30
+    pi, means, covars = gm_params_generator(2, 3, min_center_dist=0)
+    X, _ = gaussian_mixture_sample(pi, means, covars, 1e3)
+    max_clusters = 25
     lambd = np.sqrt(2 * np.log(max_clusters) / X.shape[0])
-    clf = sqrt_lasso_gmm(n_iter=300, max_clusters=max_clusters, verbose=True, lambd=lambd * 1e-1, eps_stop=1e-50,
-                         pen_power=2, lipz_c=100)
+    clf = sqrt_lasso_gmm(n_iter=300, max_clusters=max_clusters, verbose=True, lambd=lambd, eps_stop=1e-50,
+                         pen_power=2, lipz_c=1)
     print "real pi: ", pi
+    a = time()
     clf.fit(X)
+    b = time()
+    print "algo done"
     print clf.weights_
-    print weights_compare(sorted(clf.weights_), sorted(pi))
+    print "erreur:", weights_compare(sorted(clf.weights_), sorted(pi))
+    print b - a
+    print "EM+BIC"
+    a = time()
+
     params_GMM = {"n_components": range(2, max_clusters + 1)}
     clf_gmm = GridSearchCV(GMM(covariance_type='full'), param_grid=params_GMM, cv=3, n_jobs=1,
                            scoring=bic_scorer)
     clf_gmm.fit(X)
-    print weights_compare(sorted(clf_gmm.best_estimator_.weights_), sorted(pi))
+    b = time()
 
+    print weights_compare(sorted(clf_gmm.best_estimator_.weights_), sorted(pi))
+    print b - a
 
 if __name__ == '__main__':
     basic_main()
