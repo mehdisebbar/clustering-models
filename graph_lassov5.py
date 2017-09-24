@@ -14,7 +14,7 @@ class GraphLassoMix(BaseEstimator):
     """
 
     """
-    def __init__(self, n_components=2, n_iter=5, alpha = None):
+    def __init__(self, n_components=2, n_iter=20, alpha = None):
         self.n_components = n_components
         self.n_iter = n_iter
         self.min_covar = 1e-3
@@ -47,7 +47,7 @@ class GraphLassoMix(BaseEstimator):
 
         #EM-Iterations
         for i in range(self.n_iter):
-            print "Beginning Step: ",i
+            #print "Beginning Step: ",i
 
         #Expectation Step
             t = self.tau(X, self.centers, self.omegas, self.pi)

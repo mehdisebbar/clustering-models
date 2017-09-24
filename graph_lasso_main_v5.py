@@ -62,9 +62,9 @@ def algo_score(Y, y_estim, t):
     return permut
 
 if __name__ == '__main__':
-    dim_range = [30]
-    N_range = [1000, 2000, 4000, 8000, 10000]
-    k_range = [4]  #
+    dim_range = [4]
+    N_range = [100]
+    k_range = [2]  #
     results = {}
     for n in N_range:
         for k in k_range:

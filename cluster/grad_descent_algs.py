@@ -58,3 +58,7 @@ def nmapg_linesearch(x, grad_f, g, F, eta=0.1, delta=1e-5, rho=0.1):
         q_next = eta * q_previous + 1
         c = (eta * q_previous * c + F(x_next)) / q_next
     return x_next
+
+
+
+

@@ -17,7 +17,7 @@ from tools.matrix_tools import weights_compare
 verbose = False
 data_size_list = np.array([1e3, 5 * 1e3, 1e4, 5 * 1e4, 1e5])
 cluster_size_list = [20]
-dim_list = [10]
+dim_list = [5]
 max_cluster_increment = 20
 FOLDER = str(datetime.now()).split(".")[0].replace(" ", "_").replace(":", ".") + "/"
 print FOLDER

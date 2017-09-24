@@ -5,9 +5,26 @@ from cvxpy import *
 from numba import jit
 from scipy.stats import multivariate_normal
 from scipy.stats import threshold
-
+from numba import jit
 from gm_tools import score
 
+
+@jit()
+def simplex_proj_numba(y):
+    dim = len(y)
+    u = np.flip(np.sort(y),0)
+    maxi = 0
+    lambd = 0
+    for i in range(dim):
+        crit = u[i]+1./(i+1)*(1-u[:i+1].sum())
+        if crit > 0 and i > maxi:
+            maxi = i
+    s = u[:maxi+1].sum()
+    lambd = 1./(maxi+1)*(1.-s)
+    res = np.zeros(dim)
+    for j in range(dim):
+        res[j] = max(y[j]+lambd, 0)
+    return res
 
 def simplex_proj(v):
     """
@@ -17,7 +34,7 @@ def simplex_proj(v):
     """
     # for reshaping from matrix type
     y = np.array(v).reshape(len(v))
-    D, = y.shape
+    D = y.shape[0]
     x = np.array(sorted(y, reverse=True))
     u = [x[j] + 1. / (j + 1) * (1 - sum([x[i] for i in range(j + 1)])) for j in range(D)]
     l = []
@@ -29,6 +46,7 @@ def simplex_proj(v):
     rho = max(l)
     lambd = 1. / (rho + 1) * (1 - sum([x[i] for i in range(rho + 1)]))
     return np.array([max(yi + lambd, 0) for yi in y])
+
 
 def ordored_optim_proj_prob_simplex(b):
     """

@@ -138,7 +138,6 @@ class sqrt_lasso_gmm(BaseEstimator):
                 ql = self.f_pi_pen(xi, X, self.means_, self.covars_) + \
                      np.dot((pl - xi).T, self.grad_sqrt_penalty(xi, X, self.means_, self.covars_, self.pen_power)) + \
                      L / 2 * np.linalg.norm(xi - pl) ** 2
-
             alpha_next, alpha_previous = proj_unit_disk(xi - 1. / (np.sqrt(X.shape[0]) * L) *
                                                         self.grad_sqrt_penalty(xi, X, self.means_, self.covars_,
                                                                                2)), alpha_next

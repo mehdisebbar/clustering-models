@@ -109,8 +109,8 @@ class GraphLassoMix(BaseEstimator):
             tau_next = np.array([[x.value for x in line] for line in tau])
             t_next = (1. + np.sqrt(1+4*t_previous**2))/2
             xi_previous = tau_next + (t_previous - 1)/t_next * (tau_next - tau_previous)
-            print tau_next.sum(axis=1)
-            print tau_next
+            #print tau_next.sum(axis=1)
+            #print tau_next
         return tau_next
 
     def gradient(self, xi, X, centers, omegas, pi ):
