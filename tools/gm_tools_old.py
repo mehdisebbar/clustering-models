@@ -2,6 +2,7 @@ import numpy as np
 from numpy.random import multivariate_normal, multinomial
 from sklearn.datasets import make_sparse_spd_matrix
 from itertools import permutations
+from numba import jit
 
 def gaussian_mixture_sample(pi, centers, sigmas, N):
     """
@@ -58,7 +59,7 @@ def get_centers_order(real_centers, estim_centers):
     mins = sorted(d, key=d.get)[:k] #Nice trick
     return mins
 
-
+@jit
 def cont_val(y, y_estim, i, j):
     y_idx = []
     for idx,val in enumerate(y):
@@ -69,7 +70,7 @@ def cont_val(y, y_estim, i, j):
         if val == j:
             y_estim_idx.append(idx)
     return len(set(y_idx)&set(y_estim_idx))
-
+@jit
 def cont_matrix(y, y_estim, permut):
     k = len(permut)
     m = np.zeros((k,k))
@@ -77,7 +78,7 @@ def cont_matrix(y, y_estim, permut):
         for j in range(k):
             m[j,i]=cont_val(y, y_estim, i, permut[j])
     return m
-
+@jit
 def best_cont_matrix(y, y_estim):
     best_permut = list(set(y))
     best_diag_sum = 0
