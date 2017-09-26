@@ -40,16 +40,16 @@ def main(d,k,N):
         y_em = gmm.predict(X)
         t2_em = time()
         #Recovering mapping
-        permut_lasso = algo_score(Y, y_lasso)
-        permut_gmm = algo_score(Y, y_em)
-        #computing errors
+        #permut_lasso = algo_score(Y, y_lasso)
+        #permut_gmm = algo_score(Y, y_em)
+        #computing errors, the true covariances are the same
         l = []
-        for idx, val in enumerate(permut_lasso):
-            l.append(1. / (cov[idx].shape[0] ** 2) * np.linalg.norm(np.linalg.inv(cov[idx]) - lasso.omegas[val]))
+        for k in range(K):
+            l.append(1. / (cov[0].shape[0] ** 2) * np.linalg.norm(np.linalg.inv(cov[0]) - lasso.omegas[k]))
             #
         l2 = []
         for idx, val in enumerate(permut_gmm):
-            l2.append(1. / (cov[idx].shape[0] ** 2) * np.linalg.norm(np.linalg.inv(cov[idx]) - np.linalg.inv(gmm.covariances_[val])))
+            l2.append(1. / (cov[0].shape[0] ** 2) * np.linalg.norm(np.linalg.inv(cov[0]) - np.linalg.inv(gmm.covariances_[k])))
 
         #print "OK, writing results"
         pickle.dump({"K" : k,
@@ -90,7 +90,7 @@ if __name__ == '__main__':
                 for _ in range(20):
                     main(d, k, n)
     dim_range = [10]
-    N_range = [100, 1000, 5000]
+    N_range = [1000, 5000]
     k_range = [4, 10, 20, 50]  #
     results = {}
     for n in N_range:
@@ -100,7 +100,7 @@ if __name__ == '__main__':
                 for _ in range(100):
                     main(d, k, n)
     dim_range = [50]
-    N_range = [100, 1000, 5000]
+    N_range = [1000, 5000]
     k_range = [20, 50]  #
     results = {}
     for n in N_range:
