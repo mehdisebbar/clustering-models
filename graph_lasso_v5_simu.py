@@ -27,11 +27,13 @@ def main(d,k,N):
         weights = 1./k*np.ones(k)
         cov = 1e-3*np.array([np.diag(np.ones(d)) for _ in range(k)])
         X, Y = gaussian_mixture_sample(weights, centers, cov, N)
+        #glasso
         lasso = GraphLassoMix(n_components=k, n_iter=30)
         t1_lasso = time()
         lasso.fit(X)
         t2_lasso=time()
         y_lasso = lasso.clusters_assigned
+        #gmm
         gmm = GaussianMixture(n_components=k, covariance_type="full")
         t1_em= time()
         gmm.fit(X)

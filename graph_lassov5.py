@@ -8,7 +8,7 @@ import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
 rglasso = importr('glasso')
 rpy2.robjects.numpy2ri.activate()
-
+from numba import jit
 
 class GraphLassoMix(BaseEstimator):
     """
@@ -50,32 +50,43 @@ class GraphLassoMix(BaseEstimator):
             #print "Beginning Step: ",i
 
         #Expectation Step
-            t = self.tau(X, self.centers, self.omegas, self.pi)
+            self.t = self.tau(X, self.N, self.p, self.n_components)
 
         #Maximization Step
-            self.pi = t.sum(axis=0)*1/self.N
-            self.centers = np.array([(t[:,k]*X.T).sum(axis=1)*1/(self.N*self.pi[k]) for k in range(self.n_components)])
+            self.pi = self.t.sum(axis=0)*1/self.N
+            self.centers = np.array([(self.t[:,k]*X.T).sum(axis=1)*1/(self.N*self.pi[k]) for k in range(self.n_components)])
             #We normalize X with tau for sklearn graphlasso estimator
-            Z = [((X-self.centers[k]).T*np.sqrt(self.N*t[:,k]/t[:,k].sum())).T for k in range(self.n_components)]
-            #self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
-            self.omegas = np.array([ self.r_lasso_wrapper(Z[k]) for k in range(self.n_components)])
-        self.clusters_assigned = t.argmax(axis = 1)
+            Z = self.build_Z(X, self.N, self.p, self.centers, self.t, self.n_components)
+            self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
+            #self.omegas = np.array([ self.r_lasso_wrapper(Z[k]) for k in range(self.n_components)])
+        self.clusters_assigned = self.t.argmax(axis = 1)
+    
+    @jit
+    def cluster_assigned(self, X, N, p, n_components):
+        res = np.zeros([n_components, N, p])
+        for k in range(range(len(self.pi))):
+            res[k]=self.gauss_dens_inv_all(X, self.centers[k], self.omegas[k])
+        return res.argmax(axis = 1)
 
-    def cluster_assigned(self, X):
-        d = np.array([self.gauss_dens_inv_all(X, self.centers[k], self.omegas[k]) for k in range(len(self.pi))]).T
-        return d.argmax(axis = 1)
-
-
-
+    @jit
+    def build_Z(self, X, N, p, centers, t, n_components):
+        res = np.zeros([n_components, N, p])
+        for k in range(n_components):
+            res[k]=((X-centers[k]).T*np.sqrt(N*t[:,k]/t[:,k].sum())).T
+        return res
+    
+    @jit
     def gauss_dens_inv_all(self, X, center, omega):
         pi = np.pi
         return np.sqrt(np.linalg.det(omega) / ((2 * pi) ** self.p)) * \
                np.exp(-0.5*(np.dot(X-center,omega)*(X-center)).sum(axis =1))
-
-    def tau(self, X, centers, omegas, pi):
-        densities = np.array([self.gauss_dens_inv_all(X, centers[k], omegas[k]) for k in range(len(pi))]).T*pi
-        s = densities.sum(axis=1)
-        return (densities.T/(densities.sum(axis=1))).T
+    @jit
+    def tau(self, X, N, p, n_components):
+        densities = np.zeros([n_components, N])
+        for k in range(n_components):
+            densities[k] = self.gauss_dens_inv_all(X, self.centers[k], self.omegas[k])
+        densities2 = densities.T*self.pi
+        return (densities2.T/(densities2.sum(axis=1))).T
 
     def r_lasso_wrapper(self, Z_k):
         return np.array(rglasso.glasso(np.cov(Z_k.T),0.1)[1])
