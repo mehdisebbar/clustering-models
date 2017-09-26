@@ -14,7 +14,7 @@ class GraphLassoMix(BaseEstimator):
     """
     Graph lasso on GMM
     """
-    def __init__(self, n_components=2, n_iter=20, alpha = None):
+    def __init__(self, n_components=2, n_iter=100, alpha = None):
         self.n_components = n_components
         self.n_iter = n_iter
         self.min_covar = 1e-3
@@ -33,8 +33,14 @@ class GraphLassoMix(BaseEstimator):
         self.centers = KMeans(n_clusters= self.n_components, init="k-means++").fit(X).cluster_centers_
         self.pi = np.tile(1.0 / self.n_components,self.n_components)
         self.N, self.p = X.shape
+        #experiments are done on clusters with equal size, the convergence of each covariance
+        #matrix sould be the same, we take the first one as a measure of the convergence
+        #the loglikelihood should be prefered
+        omega_current = np.zeros([self.p, self.p])
+        omega_next = self.omegas[0]
+        i=0
         #EM-Iterations
-        for i in range(self.n_iter):
+        while np.linalg.norm(omega_next-omega_current) > 1e-20 or i < self.n_iter:
             #Expectation Step
             self.t = self.tau(X, self.N, self.p, self.n_components)
             #Maximization Step
@@ -45,6 +51,9 @@ class GraphLassoMix(BaseEstimator):
             self.omegas = np.array([self.model[k].fit(Z[k]).precision_ for k in range(self.n_components)])
             #Graph lasso code from R package (Friedman et al.)
             #self.omegas = np.array([ self.r_lasso_wrapper(Z[k]) for k in range(self.n_components)])
+            omega_current = omega_next
+            omega_next = self.omegas[0]
+            i+=1
         self.clusters_assigned = self.t.argmax(axis = 1)
     
     @jit

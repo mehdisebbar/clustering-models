@@ -70,7 +70,7 @@ def algo_score(Y, y_estim, t=0):
 
 if __name__ == '__main__':
     dim_range = [2]
-    N_range = [100, 1000]
+    N_range = [100, 500]
     k_range = [2, 4]  #
     results = {}
     for n in N_range:
@@ -79,9 +79,21 @@ if __name__ == '__main__':
                 print "*******Computing for d =",d," k =",k," and ",n," points********"
                 for _ in range(20):
                     main(d, k, n)
+    
     dim_range = [5]
-    N_range = [100, 1000, 5000]
-    k_range = [4, 10, 20]  #
+    N_range = [100, 1000]
+    k_range = [4, 10]  #
+    results = {}
+    for n in N_range:
+        for k in k_range:
+            for d in dim_range:
+                print "*******Computing for d =",d," k =",k," and ",n," points********"
+                for _ in range(20):
+                    main(d, k, n)
+    
+    dim_range = [5]
+    N_range = [1000, 2000]
+    k_range = [10, 20]  #
     results = {}
     for n in N_range:
         for k in k_range:
@@ -90,7 +102,7 @@ if __name__ == '__main__':
                 for _ in range(20):
                     main(d, k, n)
     dim_range = [10]
-    N_range = [1000, 5000]
+    N_range = [1000, 2000, 5000]
     k_range = [4, 10, 20, 50]  #
     results = {}
     for n in N_range:
@@ -100,7 +112,7 @@ if __name__ == '__main__':
                 for _ in range(100):
                     main(d, k, n)
     dim_range = [50]
-    N_range = [1000, 5000]
+    N_range = [1000, 2000, 5000]
     k_range = [20, 50]  #
     results = {}
     for n in N_range:
